@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, ChevronDown } from "lucide-react";
+import { X, ChevronDown, Copy, ArrowUpToLine, ArrowDownToLine, ArrowUp, ArrowDown } from "lucide-react";
 
 function Section({ title, defaultOpen, children }) {
   const [open, setOpen] = useState(defaultOpen ?? true);
@@ -27,10 +27,17 @@ function Row({ label, children }) {
   );
 }
 
-function StkInput({ value, onChange, type = "text", min, max, placeholder }) {
+function StkInput({ value, onChange, onCommit, type = "text", min, max, placeholder }) {
+  // onCommit called on blur — lets callers push a single history entry per edit session.
   return (
-    <input type={type} value={value} onChange={e => onChange(e.target.value)} min={min} max={max} placeholder={placeholder}
-      className="stk-input" style={{ width: "100%" }} />
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      onBlur={e => onCommit && onCommit(e.target.value)}
+      min={min} max={max} placeholder={placeholder}
+      className="stk-input" style={{ width: "100%" }}
+    />
   );
 }
 
@@ -51,6 +58,9 @@ function PageInspector({ subPage, onUpdate }) {
         <Row label="Width">
           <StkInput type="number" value={subPage.canvas_width || 1440} onChange={v => update("canvas_width", Number(v))} min={320} max={3840} />
         </Row>
+        <Row label="Height">
+          <StkInput type="number" value={subPage.canvas_height || 2500} onChange={v => update("canvas_height", Number(v))} min={400} max={20000} />
+        </Row>
         <Row label="Padding">
           <StkInput type="number" value={subPage.padding || 0} onChange={v => update("padding", Number(v))} min={0} />
         </Row>
@@ -62,9 +72,34 @@ function PageInspector({ subPage, onUpdate }) {
   );
 }
 
-export default function Inspector({ selectedEl, elements, setElements, onDelete, activeSubPage, onUpdateSubPage }) {
-  const update = (changes) => {
-    setElements(prev => prev.map(e => e.id === selectedEl.id ? { ...e, ...changes } : e));
+const ZBtn = ({ onClick, icon: Icon, label, testid }) => (
+  <button
+    data-testid={testid}
+    onClick={onClick}
+    title={label}
+    style={{
+      flex: 1, height: 26, display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
+      background: "transparent", color: "var(--text-mute)", border: "1px solid var(--line)", borderRadius: "var(--r-sm)",
+      fontFamily: "var(--font-mono)", fontSize: 10, transition: "all 0.15s", cursor: "pointer"
+    }}
+    onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-2)"; e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
+    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-mute)"; e.currentTarget.style.borderColor = "var(--line)"; }}
+  >
+    <Icon size={11} />
+  </button>
+);
+
+export default function Inspector({
+  selectedEl, elements, setElements,
+  onUpdate, onDelete, onDuplicate,
+  onBringToFront, onSendToBack, onBringForward, onSendBackward,
+  activeSubPage, onUpdateSubPage,
+}) {
+  // onUpdate(id, changes, {record}) — when not provided, fall back to direct setElements (no history).
+  const update = (changes, { record = true } = {}) => {
+    if (!selectedEl) return;
+    if (onUpdate) onUpdate(selectedEl.id, changes, { record });
+    else setElements(prev => prev.map(e => e.id === selectedEl.id ? { ...e, ...changes } : e));
   };
   const updateContent = (key, value) => {
     update({ content: { ...selectedEl?.content, [key]: value } });
@@ -84,19 +119,23 @@ export default function Inspector({ selectedEl, elements, setElements, onDelete,
       </div>
 
       <div style={{ flex: 1, overflow: "auto" }}>
-        {/* Page settings — always visible at top */}
         <PageInspector subPage={activeSubPage} onUpdate={onUpdateSubPage} />
-
-        {/* Divider */}
         <div style={{ margin: "8px 12px", borderTop: "1px dashed var(--line)" }} />
 
-        {/* Element inspector or empty state */}
         {!selectedEl ? (
           <div style={{ padding: "12px" }}>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.12em", marginBottom: 8 }}>// SELECTION EMPTY</div>
             <p style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-dim)", lineHeight: 1.6 }}>
               Select an element to edit styles, or use the page inspector above.
             </p>
+            <div style={{ marginTop: 12, fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", lineHeight: 1.8 }}>
+              <div style={{ color: "var(--text-mute)", marginBottom: 4, letterSpacing: "0.1em" }}>// SHORTCUTS</div>
+              <div>⌘Z / ⌘⇧Z — undo / redo</div>
+              <div>⌘C / ⌘V / ⌘D — copy / paste / duplicate</div>
+              <div>⌘] / ⌘[ — z-order forward / back</div>
+              <div>Delete — remove · Arrows — nudge</div>
+              <div>Double-click text — inline edit</div>
+            </div>
           </div>
         ) : (
           <>
@@ -106,39 +145,61 @@ export default function Inspector({ selectedEl, elements, setElements, onDelete,
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text)" }}>{selectedEl.name}</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-dim)", marginTop: 1 }}>{selectedEl.type} · {selectedEl.id.slice(-6)}</div>
               </div>
-              <button data-testid="delete-element-btn" onClick={() => onDelete(selectedEl.id)} style={{
-                width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
-                color: "var(--text-dim)", borderRadius: "var(--r-sm)", transition: "all 0.15s"
-              }}
-                onMouseEnter={e => { e.currentTarget.style.color = "var(--danger)"; e.currentTarget.style.background = "color-mix(in oklab, var(--danger) 12%, transparent)"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "transparent"; }}>
-                <X size={11} />
-              </button>
+              <div style={{ display: "flex", gap: 4 }}>
+                <button
+                  data-testid="duplicate-element-btn"
+                  title="Duplicate (Cmd/Ctrl+D)"
+                  onClick={() => onDuplicate && onDuplicate(selectedEl.id)}
+                  style={{ width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", borderRadius: "var(--r-sm)", transition: "all 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "color-mix(in oklab, var(--accent) 12%, transparent)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "transparent"; }}
+                >
+                  <Copy size={11} />
+                </button>
+                <button
+                  data-testid="delete-element-btn"
+                  title="Delete"
+                  onClick={() => onDelete(selectedEl.id)}
+                  style={{ width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", borderRadius: "var(--r-sm)", transition: "all 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "var(--danger)"; e.currentTarget.style.background = "color-mix(in oklab, var(--danger) 12%, transparent)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "transparent"; }}
+                >
+                  <X size={11} />
+                </button>
+              </div>
             </div>
 
             {/* Transform */}
             <Section title="TRANSFORM">
               <Row label="X · Y">
                 <div style={{ display: "flex", gap: 4 }}>
-                  <StkInput type="number" value={Math.round(selectedEl.x)} onChange={v => update({ x: Number(v) })} />
-                  <StkInput type="number" value={Math.round(selectedEl.y)} onChange={v => update({ y: Number(v) })} />
+                  <StkInput type="number" value={Math.round(selectedEl.x)} onChange={v => update({ x: Number(v) }, { record: false })} onCommit={() => {}} />
+                  <StkInput type="number" value={Math.round(selectedEl.y)} onChange={v => update({ y: Number(v) }, { record: false })} onCommit={() => {}} />
                 </div>
               </Row>
               <Row label="W · H">
                 <div style={{ display: "flex", gap: 4 }}>
-                  <StkInput type="number" value={Math.round(selectedEl.w)} onChange={v => update({ w: Math.max(10, Number(v)) })} />
-                  <StkInput type="number" value={Math.round(selectedEl.h)} onChange={v => update({ h: Math.max(10, Number(v)) })} />
+                  <StkInput type="number" value={Math.round(selectedEl.w)} onChange={v => update({ w: Math.max(10, Number(v)) }, { record: false })} />
+                  <StkInput type="number" value={Math.round(selectedEl.h)} onChange={v => update({ h: Math.max(10, Number(v)) }, { record: false })} />
                 </div>
               </Row>
-              <Row label="Z-index">
-                <StkInput type="number" value={selectedEl.zIndex} onChange={v => update({ zIndex: Number(v) })} min={0} />
+              <Row label="Z-order">
+                <div style={{ display: "flex", gap: 3 }}>
+                  <ZBtn testid="z-send-back"    onClick={() => onSendToBack    && onSendToBack(selectedEl.id)}    icon={ArrowDownToLine} label="Send to back" />
+                  <ZBtn testid="z-backward"     onClick={() => onSendBackward  && onSendBackward(selectedEl.id)}  icon={ArrowDown}      label="Send backward" />
+                  <ZBtn testid="z-forward"      onClick={() => onBringForward  && onBringForward(selectedEl.id)}  icon={ArrowUp}        label="Bring forward" />
+                  <ZBtn testid="z-bring-front"  onClick={() => onBringToFront  && onBringToFront(selectedEl.id)}  icon={ArrowUpToLine}  label="Bring to front" />
+                </div>
               </Row>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", marginTop: 4 }}>
+                z = {selectedEl.zIndex ?? 0}
+              </div>
             </Section>
 
             {/* Name */}
-            <Section title="LABEL">
+            <Section title="LABEL" defaultOpen={false}>
               <Row label="Name">
-                <StkInput value={selectedEl.name} onChange={v => update({ name: v })} />
+                <StkInput value={selectedEl.name} onChange={v => update({ name: v }, { record: false })} />
               </Row>
             </Section>
 
@@ -195,6 +256,14 @@ export default function Inspector({ selectedEl, elements, setElements, onDelete,
             {selectedEl.type === "shape" && (
               <Section title="SHAPE">
                 <Row label="Color"><StkInput value={selectedEl.content?.color || "var(--accent)"} onChange={v => updateContent("color", v)} /></Row>
+                <Row label="Round">
+                  <button data-testid="shape-round-toggle" onClick={() => updateContent("round", !selectedEl.content?.round)} style={{
+                    width: 36, height: 20, borderRadius: 999, background: selectedEl.content?.round ? "var(--accent)" : "var(--line)",
+                    transition: "background 0.2s", position: "relative"
+                  }}>
+                    <span style={{ position: "absolute", top: 3, transition: "left 0.2s", left: selectedEl.content?.round ? 18 : 4, width: 14, height: 14, borderRadius: "50%", background: selectedEl.content?.round ? "var(--accent-ink)" : "var(--text-mute)" }} />
+                  </button>
+                </Row>
               </Section>
             )}
 

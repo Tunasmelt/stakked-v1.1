@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, RotateCcw, Undo2, Redo2, Monitor, Tablet, Smartphone, ZoomIn, ZoomOut, Globe, Sparkles, Eye, Download, ChevronDown } from "lucide-react";
 
-export default function Toolbar({ page, activeSubPage, theme, mode, bp, setBp, zoom, setZoom, canvasWidth, canvasHeight, onCanvasWidthChange, onCanvasHeightChange, onPublish, onThemeDrawer, onAiDock, onSave, saved, onWorkflow, workflowMode }) {
+export default function Toolbar({ page, activeSubPage, theme, mode, bp, setBp, zoom, setZoom, canvasWidth, canvasHeight, onCanvasWidthChange, onCanvasHeightChange, onPublish, onThemeDrawer, onAiDock, onSave, saved, onWorkflow, workflowMode, onUndo, onRedo, canUndo, canRedo }) {
   return (
     <div style={{
       height: 42, display: "flex", alignItems: "center", gap: 0,
@@ -55,13 +55,28 @@ export default function Toolbar({ page, activeSubPage, theme, mode, bp, setBp, z
 
       {/* Undo / Redo */}
       <div style={{ display: "flex", alignItems: "center", borderRight: "1px solid var(--line)", padding: "0 8px", gap: 2, height: "100%" }}>
-        {[{ icon: <Undo2 size={13} />, label: "Undo" }, { icon: <Redo2 size={13} />, label: "Redo" }].map((item, i) => (
-          <button key={i} title={item.label} style={{ width: 28, height: 28, borderRadius: "var(--r-sm)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-mute)", transition: "all 0.15s" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-mute)"; }}>
-            {item.icon}
-          </button>
-        ))}
+        <button
+          data-testid="toolbar-undo"
+          title="Undo (Cmd/Ctrl+Z)"
+          onClick={onUndo}
+          disabled={canUndo === false}
+          style={{ width: 28, height: 28, borderRadius: "var(--r-sm)", display: "flex", alignItems: "center", justifyContent: "center", color: canUndo === false ? "var(--text-dim)" : "var(--text-mute)", opacity: canUndo === false ? 0.5 : 1, transition: "all 0.15s", cursor: canUndo === false ? "not-allowed" : "pointer" }}
+          onMouseEnter={e => { if (canUndo !== false) { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text)"; } }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = canUndo === false ? "var(--text-dim)" : "var(--text-mute)"; }}
+        >
+          <Undo2 size={13} />
+        </button>
+        <button
+          data-testid="toolbar-redo"
+          title="Redo (Cmd/Ctrl+Shift+Z)"
+          onClick={onRedo}
+          disabled={canRedo === false}
+          style={{ width: 28, height: 28, borderRadius: "var(--r-sm)", display: "flex", alignItems: "center", justifyContent: "center", color: canRedo === false ? "var(--text-dim)" : "var(--text-mute)", opacity: canRedo === false ? 0.5 : 1, transition: "all 0.15s", cursor: canRedo === false ? "not-allowed" : "pointer" }}
+          onMouseEnter={e => { if (canRedo !== false) { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text)"; } }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = canRedo === false ? "var(--text-dim)" : "var(--text-mute)"; }}
+        >
+          <Redo2 size={13} />
+        </button>
       </div>
 
       {/* Project name + theme */}

@@ -10,6 +10,8 @@ import ThemeDrawer from "../components/editor/ThemeDrawer";
 import AiDock from "../components/editor/AiDock";
 import PublishModal from "../components/editor/PublishModal";
 
+const HISTORY_LIMIT = 50;
+
 export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -35,17 +37,48 @@ export default function Editor() {
   const [aiStreaming, setAiStreaming] = useState(false);
   const [aiLines,    setAiLines]     = useState([]);
 
+  // Undo/redo history (per active sub-page, reset on switch)
+  const undoStack = useRef([]);
+  const redoStack = useRef([]);
+  // Clipboard (in-memory)
+  const clipboard = useRef(null);
+
   const saveTimer = useRef(null);
   const elementsRef = useRef(elements);
   const subPagesRef = useRef(subPages);
   const activeSubPageIdRef = useRef(activeSubPageId);
+  const selectedRef = useRef(selected);
 
-  // Keep refs in sync
   useEffect(() => { elementsRef.current = elements; }, [elements]);
   useEffect(() => { subPagesRef.current = subPages; }, [subPages]);
   useEffect(() => { activeSubPageIdRef.current = activeSubPageId; }, [activeSubPageId]);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
 
-  // Load page
+  // ─── History helpers ───────────────────────────────────────────────────────
+  const pushHistory = useCallback(() => {
+    undoStack.current.push(JSON.stringify(elementsRef.current));
+    if (undoStack.current.length > HISTORY_LIMIT) undoStack.current.shift();
+    redoStack.current = [];
+  }, []);
+
+  const undo = useCallback(() => {
+    if (undoStack.current.length === 0) return;
+    const prev = undoStack.current.pop();
+    redoStack.current.push(JSON.stringify(elementsRef.current));
+    try { setElements(JSON.parse(prev)); } catch (e) { /* ignore */ }
+  }, []);
+
+  const redo = useCallback(() => {
+    if (redoStack.current.length === 0) return;
+    const next = redoStack.current.pop();
+    undoStack.current.push(JSON.stringify(elementsRef.current));
+    try { setElements(JSON.parse(next)); } catch (e) { /* ignore */ }
+  }, []);
+
+  // Reset history when switching sub-pages
+  const resetHistory = () => { undoStack.current = []; redoStack.current = []; };
+
+  // ─── Load page ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!id) { navigate("/workspace"); return; }
     (async () => {
@@ -74,10 +107,11 @@ export default function Editor() {
         if (!local) navigate("/workspace");
       }
       setLoading(false);
+      resetHistory();
     })();
   }, [id, navigate]);
 
-  // Apply theme to entire document while editor is mounted; restore on unmount so it doesn't leak into workspace/landing.
+  // Apply theme while editor mounted; restore on unmount
   useEffect(() => {
     const prevTheme = document.documentElement.getAttribute("data-theme");
     const prevMode  = document.documentElement.getAttribute("data-mode");
@@ -98,7 +132,7 @@ export default function Editor() {
       clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => { handleSave(true); }, 2000);
     }
-  }, [elements, theme, mode, subPages]);
+  }, [elements, theme, mode, subPages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const buildSavePayload = () => {
     const updatedSubPages = subPagesRef.current.map(sp =>
@@ -107,7 +141,7 @@ export default function Editor() {
     return { sub_pages: updatedSubPages, elements: elementsRef.current, theme, mode };
   };
 
-  const handleSave = useCallback(async (silent = false) => {
+  const handleSave = useCallback(async () => {
     if (!id || !page) return;
     try {
       const payload = buildSavePayload();
@@ -119,19 +153,19 @@ export default function Editor() {
     } catch (e) { console.error("Save failed", e); }
   }, [id, page, theme, mode]);
 
-  // Sub-page management
+  // ─── Sub-page management ───────────────────────────────────────────────────
   const switchSubPage = useCallback((newId) => {
-    // Save current elements to current sub-page
     setSubPages(prev => prev.map(sp =>
-      sp.id === activeSubPageId ? { ...sp, elements } : sp
+      sp.id === activeSubPageIdRef.current ? { ...sp, elements: elementsRef.current } : sp
     ));
-    const sp = subPages.find(s => s.id === newId);
+    const sp = subPagesRef.current.find(s => s.id === newId);
     if (sp) {
       setElements(sp.elements || []);
       setActiveSubPageId(newId);
       setSelected(null);
+      resetHistory();
     }
-  }, [activeSubPageId, elements, subPages]);
+  }, []);
 
   const addSubPage = useCallback(() => {
     const newSp = {
@@ -141,7 +175,6 @@ export default function Editor() {
       elements: [],
       canvas_width: 1440, canvas_height: 2500, padding: 0, transition: "none"
     };
-    // Persist current edits to the currently active sub-page, then append the new one and switch.
     setSubPages(prev => [
       ...prev.map(sp => sp.id === activeSubPageId ? { ...sp, elements } : sp),
       newSp,
@@ -149,6 +182,7 @@ export default function Editor() {
     setActiveSubPageId(newSp.id);
     setElements([]);
     setSelected(null);
+    resetHistory();
   }, [subPages, activeSubPageId, elements]);
 
   const renameSubPage = useCallback((spId, name) => {
@@ -165,6 +199,7 @@ export default function Editor() {
       setActiveSubPageId(remaining[0].id);
       setElements(remaining[0].elements || []);
       setSelected(null);
+      resetHistory();
     }
   }, [subPages, activeSubPageId]);
 
@@ -172,12 +207,82 @@ export default function Editor() {
     setSubPages(prev => prev.map(sp => sp.id === updated.id ? { ...sp, ...updated } : sp));
   }, []);
 
-  const handleDeleteElement = (elId) => {
+  // ─── Element operations (with history) ─────────────────────────────────────
+  const handleDeleteElement = useCallback((elId) => {
+    pushHistory();
     setElements(prev => prev.filter(e => e.id !== elId));
     setSelected(null);
-  };
+  }, [pushHistory]);
+
+  const duplicateElement = useCallback((elId) => {
+    const el = elementsRef.current.find(e => e.id === elId);
+    if (!el) return;
+    const copy = {
+      ...el,
+      id: `el-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+      x: el.x + 16, y: el.y + 16,
+      zIndex: elementsRef.current.length,
+      content: JSON.parse(JSON.stringify(el.content || {})),
+    };
+    pushHistory();
+    setElements(prev => [...prev, copy]);
+    setSelected(copy.id);
+  }, [pushHistory]);
+
+  const copyElement = useCallback((elId) => {
+    const el = elementsRef.current.find(e => e.id === elId);
+    if (el) clipboard.current = JSON.parse(JSON.stringify(el));
+  }, []);
+
+  const pasteElement = useCallback(() => {
+    const el = clipboard.current;
+    if (!el) return;
+    const copy = {
+      ...el,
+      id: `el-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+      x: (el.x || 0) + 16,
+      y: (el.y || 0) + 16,
+      zIndex: elementsRef.current.length,
+    };
+    pushHistory();
+    setElements(prev => [...prev, copy]);
+    setSelected(copy.id);
+  }, [pushHistory]);
+
+  const bringToFront = useCallback((elId) => {
+    pushHistory();
+    setElements(prev => {
+      const maxZ = Math.max(0, ...prev.map(e => e.zIndex || 0));
+      return prev.map(e => e.id === elId ? { ...e, zIndex: maxZ + 1 } : e);
+    });
+  }, [pushHistory]);
+
+  const sendToBack = useCallback((elId) => {
+    pushHistory();
+    setElements(prev => {
+      const minZ = Math.min(0, ...prev.map(e => e.zIndex || 0));
+      return prev.map(e => e.id === elId ? { ...e, zIndex: minZ - 1 } : e);
+    });
+  }, [pushHistory]);
+
+  const bringForward = useCallback((elId) => {
+    pushHistory();
+    setElements(prev => prev.map(e => e.id === elId ? { ...e, zIndex: (e.zIndex || 0) + 1 } : e));
+  }, [pushHistory]);
+
+  const sendBackward = useCallback((elId) => {
+    pushHistory();
+    setElements(prev => prev.map(e => e.id === elId ? { ...e, zIndex: (e.zIndex || 0) - 1 } : e));
+  }, [pushHistory]);
+
+  // Inspector update helpers — wrap with history
+  const updateElement = useCallback((elId, changes, { record = true } = {}) => {
+    if (record) pushHistory();
+    setElements(prev => prev.map(e => e.id === elId ? { ...e, ...changes } : e));
+  }, [pushHistory]);
 
   const handleAiGenerate = (newElements) => {
+    pushHistory();
     setElements(prev => {
       const ids = new Set(prev.map(e => e.id));
       return [...prev, ...newElements.filter(e => !ids.has(e.id))];
@@ -191,6 +296,57 @@ export default function Editor() {
   const activeSubPage = subPages.find(sp => sp.id === activeSubPageId);
   const selectedEl    = elements.find(e => e.id === selected);
 
+  // ─── Keyboard shortcuts ────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      // Skip when typing in inputs/textareas/contentEditable
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+
+      const meta = e.ctrlKey || e.metaKey;
+      const sel = selectedRef.current;
+
+      // Save
+      if (meta && e.key.toLowerCase() === "s") { e.preventDefault(); handleSave(); return; }
+      // Undo / Redo
+      if (meta && !e.shiftKey && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); return; }
+      if (meta && (e.shiftKey && e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y")) { e.preventDefault(); redo(); return; }
+      // Copy / Paste / Duplicate / Cut
+      if (meta && e.key.toLowerCase() === "c" && sel) { e.preventDefault(); copyElement(sel); return; }
+      if (meta && e.key.toLowerCase() === "v") { e.preventDefault(); pasteElement(); return; }
+      if (meta && e.key.toLowerCase() === "d" && sel) { e.preventDefault(); duplicateElement(sel); return; }
+      if (meta && e.key.toLowerCase() === "x" && sel) {
+        e.preventDefault();
+        copyElement(sel);
+        handleDeleteElement(sel);
+        return;
+      }
+      // Z-order: Cmd+] / Cmd+[
+      if (meta && e.key === "]" && sel) { e.preventDefault(); e.shiftKey ? bringToFront(sel) : bringForward(sel); return; }
+      if (meta && e.key === "[" && sel) { e.preventDefault(); e.shiftKey ? sendToBack(sel) : sendBackward(sel); return; }
+      // Delete
+      if ((e.key === "Delete" || e.key === "Backspace") && sel) {
+        e.preventDefault();
+        handleDeleteElement(sel);
+        return;
+      }
+      // Escape
+      if (e.key === "Escape") { setSelected(null); return; }
+      // Arrow nudges
+      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key) && sel) {
+        const d = e.shiftKey ? 10 : 1;
+        const dx = e.key === "ArrowRight" ? d : e.key === "ArrowLeft" ? -d : 0;
+        const dy = e.key === "ArrowDown" ? d : e.key === "ArrowUp" ? -d : 0;
+        // Use single history entry per nudge press
+        pushHistory();
+        setElements(prev => prev.map(el => el.id === sel ? { ...el, x: Math.max(0, el.x + dx), y: Math.max(0, el.y + dy) } : el));
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleSave, undo, redo, copyElement, pasteElement, duplicateElement, handleDeleteElement, bringToFront, sendToBack, bringForward, sendBackward, pushHistory]);
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -203,7 +359,6 @@ export default function Editor() {
 
   return (
     <div data-testid="editor-page" style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)" }}>
-      {/* Top toolbar */}
       <Toolbar
         page={page}
         activeSubPage={activeSubPage}
@@ -216,17 +371,19 @@ export default function Editor() {
         onCanvasWidthChange={w => updateSubPage({ ...activeSubPage, canvas_width: w })}
         onCanvasHeightChange={h => updateSubPage({ ...activeSubPage, canvas_height: h })}
         saved={saved}
-        onSave={() => handleSave(false)}
+        onSave={() => handleSave()}
         onPublish={() => setShowPublish(true)}
         onThemeDrawer={() => setShowTheme(v => !v)}
         onAiDock={() => setShowAi(v => !v)}
         workflowMode={workflowMode}
         onWorkflow={setWorkflowMode}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={undoStack.current.length > 0}
+        canRedo={redoStack.current.length > 0}
       />
 
-      {/* 3-column body */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
-        {/* Left panel */}
         <LeftPanel
           tab={leftTab}
           setTab={setLeftTab}
@@ -237,9 +394,10 @@ export default function Editor() {
           onAdd={addSubPage}
           onRename={renameSubPage}
           onDeletePage={deleteSubPage}
+          onSelectElement={setSelected}
+          selected={selected}
         />
 
-        {/* Canvas */}
         <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <Canvas
             elements={elements}
@@ -252,9 +410,9 @@ export default function Editor() {
             canvasHeight={activeSubPage?.canvas_height || 2500}
             aiLines={aiLines}
             aiStreaming={aiStreaming}
+            pushHistory={pushHistory}
           />
 
-          {/* Floating theme drawer */}
           {showTheme && (
             <div style={{ position: "absolute", top: 8, right: 8, zIndex: 50 }}>
               <ThemeDrawer
@@ -264,7 +422,6 @@ export default function Editor() {
               />
             </div>
           )}
-          {/* AI dock */}
           {showAi && (
             <AiDock
               onGenerate={handleAiGenerate}
@@ -275,18 +432,22 @@ export default function Editor() {
           )}
         </div>
 
-        {/* Inspector */}
         <Inspector
           selectedEl={selectedEl}
           elements={elements}
           setElements={setElements}
+          onUpdate={updateElement}
           onDelete={handleDeleteElement}
+          onDuplicate={duplicateElement}
+          onBringToFront={bringToFront}
+          onSendToBack={sendToBack}
+          onBringForward={bringForward}
+          onSendBackward={sendBackward}
           activeSubPage={activeSubPage}
           onUpdateSubPage={updateSubPage}
         />
       </div>
 
-      {/* Bottom status bar */}
       <div style={{
         height: 26, background: "var(--bg-2)", borderTop: "1px solid var(--line)",
         display: "flex", alignItems: "center", paddingLeft: 10, paddingRight: 10,
@@ -302,12 +463,13 @@ export default function Editor() {
         <span>·</span>
         <span>{bp}</span>
         <div style={{ flex: 1 }} />
+        <span data-testid="status-saved">{saved ? "saved" : "unsaved"}</span>
+        <span>·</span>
         <span>{zoom}%</span>
         <span>·</span>
         <span>{selected ? "1 selected" : "0 selected"}</span>
       </div>
 
-      {/* Publish modal */}
       {showPublish && (
         <PublishModal
           page={page}
@@ -315,32 +477,6 @@ export default function Editor() {
           onPublished={updated => setPage(p => ({ ...p, ...updated }))}
         />
       )}
-
-      {/* Keyboard handler */}
-      <KeyHandler selected={selected} elements={elements} setElements={setElements} setSelected={setSelected} />
     </div>
   );
-}
-
-function KeyHandler({ selected, elements, setElements, setSelected }) {
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-      if ((e.key === "Delete" || e.key === "Backspace") && selected) {
-        setElements(prev => prev.filter(el => el.id !== selected));
-        setSelected(null);
-      }
-      if (e.key === "Escape") setSelected(null);
-      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key) && selected) {
-        const d = e.shiftKey ? 10 : 1;
-        const dx = e.key === "ArrowRight" ? d : e.key === "ArrowLeft" ? -d : 0;
-        const dy = e.key === "ArrowDown" ? d : e.key === "ArrowUp" ? -d : 0;
-        setElements(prev => prev.map(el => el.id === selected ? { ...el, x: el.x + dx, y: el.y + dy } : el));
-        e.preventDefault();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [selected, setElements, setSelected]);
-  return null;
 }
