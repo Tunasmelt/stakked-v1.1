@@ -1,0 +1,103 @@
+{
+  "theme_and_archetype": {
+    "theme": "dark",
+    "archetype": "Swiss & High-Contrast / Brutalist System",
+    "description": "Dark-first monochromatic UI driven entirely by 5 dynamic accent themes (ghost, neon, brutal, paper, sunset). Heavily relies on monospace typography for technical details and bold display sans for emotional impact. The visual mood is a professional creative IDE combined with wild canvas aesthetics."
+  },
+  "typography": {
+    "heading_font": "Geist, sans-serif",
+    "body_font": "Instrument Sans, sans-serif",
+    "monospace_font": "JetBrains Mono, monospace",
+    "scale": {
+      "h1_hero": "text-[clamp(40px,5vw,72px)] tracking-[-0.03em] font-bold leading-[1.1]",
+      "h2_section": "text-4xl tracking-tight font-semibold",
+      "h3_card": "text-xl tracking-tight font-medium",
+      "body": "text-base leading-relaxed",
+      "monospace_label": "text-[10px] md:text-xs font-mono tracking-widest uppercase",
+      "monospace_measurement": "text-xs font-mono"
+    }
+  },
+  "colors": {
+    "system_variables": {
+      "--bg": "#0c0c0d",
+      "--surface": "#161618",
+      "--line": "#2a2a2b",
+      "--text": "#ffffff",
+      "--text-mute": "#8c8c8e",
+      "--text-dim": "#4b4b4d"
+    },
+    "dynamic_themes": {
+      "ghost": { "--accent": "#f2f2f2", "--accent-ink": "#000000" },
+      "neon": { "--accent": "#ff2e9a", "--accent-ink": "#ffffff" },
+      "brutal": { "--accent": "#ffee00", "--accent-ink": "#000000" },
+      "paper": { "--accent": "#d4a574", "--accent-ink": "#000000" },
+      "sunset": { "--accent": "#ff8e53", "--accent-ink": "#000000" }
+    },
+    "instructions": "Map these exact variables in the global CSS and use them dynamically via Tailwind classes (e.g., bg-[var(--bg)] or text-[var(--accent)]). Do not use Tailwind's default slate/gray scale for the main structural elements."
+  },
+  "layout_and_spacing": {
+    "density": "compact",
+    "pages": {
+      "editor": {
+        "layout_type": "3-column CSS Grid",
+        "structure": "grid-cols-[240px_1fr_280px] h-screen overflow-hidden",
+        "left_tray": "flex flex-col bg-[var(--surface)] border-r border-[var(--line)]",
+        "center_canvas": "relative overflow-auto bg-[var(--bg)] bg-[radial-gradient(circle_at_center,var(--line)_1px,transparent_1px)] bg-[length:16px_16px]",
+        "right_properties": "flex flex-col bg-[var(--surface)] border-l border-[var(--line)]"
+      },
+      "workspace_dashboard": {
+        "layout_type": "Sidebar + Content Grid",
+        "structure": "grid grid-cols-[240px_1fr] min-h-screen bg-[var(--bg)]",
+        "project_grid": "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 p-8"
+      },
+      "community_gallery": {
+        "grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8",
+        "card": "group relative aspect-[3/4] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface)]"
+      }
+    },
+    "primitives": {
+      "toolbar": "h-14 flex items-center px-4 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur-md sticky top-0 z-50",
+      "icon_button": "w-7 h-7 rounded flex items-center justify-center hover:bg-[var(--line)] text-[var(--text)] hover:text-[var(--accent)] transition-colors",
+      "bounding_box": "absolute border-2 border-[var(--accent)] pointer-events-none",
+      "bounding_handle": "w-2 h-2 bg-[var(--bg)] border border-[var(--accent)] absolute shadow-[0_0_8px_var(--accent)] pointer-events-auto",
+      "drop_ghost": "border-dashed border-2 border-[var(--accent)] bg-[var(--accent)]/10 opacity-70"
+    }
+  },
+  "motion_and_interactions": {
+    "scanline_overlay": "pointer-events-none fixed inset-0 z-[100] bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.05)_51%)] bg-[length:100%_4px] mix-blend-overlay",
+    "animations": "Use CSS transitions and keyframes for all interactions. Avoid heavy JS physics libraries unless explicitly needed for the NLP sequencer.",
+    "hover_state": "transition-all duration-200 ease-out hover:border-[var(--accent)]",
+    "focus_state": "outline-none ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]"
+  },
+  "component_instructions": {
+    "buttons": "Primary CTA: bg-[var(--accent)] text-[var(--accent-ink)] hover:opacity-90. Font should be sans-serif for main CTA, mono for technical actions.",
+    "panels_and_cards": "Avoid using Shadcn standard rounded cards in the editor. Use stark rectangular divs with border-[var(--line)] to match the IDE/technical tool aesthetic.",
+    "landing_hero_slab": "Implement the '3 stacked slab art' using pure CSS: Three layered `div` elements rotated on the Z and X axis, containing backdrop-blur, subtle borders, and abstract gradient blobs to simulate 3D glass.",
+    "inputs": "Bg-[var(--bg)], border-[var(--line)], rounded-sm, focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)].",
+    "ai_prompt_dock": "Floating absolute positioning at the bottom center of the canvas. Heavy backdrop blur, border-[var(--line)], glowing accent border on focus."
+  },
+  "media_urls": [
+    {
+      "category": "Musician / Creator Portraits (Dark Theme)",
+      "urls": [
+        "https://images.unsplash.com/photo-1771894429185-0bc231ba6b42?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwyfHxtdXNpY2lhbiUyMHBlcmZvcm1pbmclMjBkYXJrJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzc2OTQ2MTkyfDA&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1763889784402-5e8744af31b2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwzfHxtdXNpY2lhbiUyMHBlcmZvcm1pbmclMjBkYXJrJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzc2OTQ2MTkyfDA&ixlib=rb-4.1.0&q=85",
+        "https://images.pexels.com/photos/6518212/pexels-photo-6518212.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+      ],
+      "usage": "Use these in the 'Pages Gallery' or community templates section to represent musician portfolios."
+    },
+    {
+      "category": "Digital Artist / Studio Workspaces",
+      "urls": [
+        "https://images.unsplash.com/photo-1547194936-28214bd75193?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHxkaWdpdGFsJTIwM2QlMjBhcnRpc3QlMjBzdHVkaW8lMjBzZXR1cHxlbnwwfHx8fDE3NzY5NDYxOTJ8MA&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1682130442699-843a145fc3f5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwzfHxkaWdpdGFsJTIwM2QlMjBhcnRpc3QlMjBzdHVkaW8lMjBzZXR1cHxlbnwwfHx8fDE3NzY5NDYxOTJ8MA&ixlib=rb-4.1.0&q=85",
+        "https://images.pexels.com/photos/28655002/pexels-photo-28655002.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+      ],
+      "usage": "Use these for digital creator portfolios, marketing page feature section backgrounds, or workspace empty states."
+    }
+  ],
+  "accessibility_and_testing": {
+    "focus_management": "Ensure all drag-and-drop elements are keyboard accessible (Space to pick up, Arrows to move, Enter to drop).",
+    "data_testid_rules": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case (e.g., data-testid='layer-panel-item')."
+  }
+}
