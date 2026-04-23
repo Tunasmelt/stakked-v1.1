@@ -1,115 +1,276 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-    margin: 0;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-        sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+/* ─── Stakked Design System ─────────────────────────────────────── */
+:root {
+  --bg:          #0c0c0d;
+  --bg-2:        #111113;
+  --surface:     #141417;
+  --surface-2:   #1a1a1e;
+  --line:        #232327;
+  --line-2:      #2d2d33;
+  --text:        #f1f1f2;
+  --text-mute:   #8c8c93;
+  --text-dim:    #5a5a61;
+  --accent:      #ff2e9a;
+  --accent-ink:  #ffffff;
+  --danger:      #ff5c5c;
+  --ok:          #8bff9a;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+  --font-ui:   'Instrument Sans', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Space Grotesk', 'Instrument Sans', system-ui, sans-serif;
 }
 
-code {
-    font-family:
-        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+/* ─── Light mode ─────────────────────────────────────────────────── */
+[data-mode="light"] {
+  --bg:          #f7f6f3;
+  --bg-2:        #efeee9;
+  --surface:     #ffffff;
+  --surface-2:   #fafaf8;
+  --line:        #e3e1db;
+  --line-2:      #cfcdc5;
+  --text:        #0f0f10;
+  --text-mute:   #5a5a5f;
+  --text-dim:    #9b9ba0;
+  --accent-ink:  #0c0c0d;
 }
 
+/* ─── Themes ─────────────────────────────────────────────────────── */
+[data-theme="neon"][data-mode="dark"]  { --accent:#ff2e9a; --accent-ink:#ffffff; --bg:#07000f; --bg-2:#0c0120; --surface:#130327; --surface-2:#18062e; --line:#2a114a; --line-2:#3d1a6a; --text:#f6eaff; --text-mute:#a98cff; --text-dim:#6845b0; }
+[data-theme="neon"][data-mode="light"] { --accent:#e0006a; --accent-ink:#ffffff; --bg:#fff3fb; --bg-2:#ffe6f5; --surface:#ffffff; --surface-2:#fff7fc; --line:#ffb7de; --line-2:#ff79bc; --text:#2a0430; --text-mute:#85286c; --text-dim:#b665a0; }
+[data-theme="ghost"][data-mode="dark"] { --accent:#f2f2f2; --accent-ink:#0c0c0d; }
+[data-theme="ghost"][data-mode="light"]{ --accent:#0f0f10; --accent-ink:#ffffff; }
+[data-theme="brutal"][data-mode="dark"]{ --accent:#ffee00; --accent-ink:#000000; --bg:#000; --bg-2:#0a0a0a; --surface:#0f0f0f; --surface-2:#141414; --line:#2c2c2c; --line-2:#4a4a4a; --text:#fff; --text-mute:#bfbfbf; --text-dim:#777; }
+[data-theme="brutal"][data-mode="light"]{ --accent:#ff0000; --accent-ink:#ffffff; --bg:#fff; --bg-2:#f0f0f0; --surface:#fff; --surface-2:#fafafa; --line:#000; --line-2:#000; --text:#000; --text-mute:#222; --text-dim:#555; }
+[data-theme="paper"][data-mode="dark"] { --accent:#d4a574; --accent-ink:#000000; --bg:#1e1b15; --bg-2:#27231b; --surface:#2c2822; --surface-2:#322d25; --line:#3f392f; --line-2:#564e3f; --text:#e8e2d0; --text-mute:#b39b78; --text-dim:#7a6a51; }
+[data-theme="paper"][data-mode="light"]{ --accent:#a06b2a; --accent-ink:#ffffff; --bg:#f5f1e8; --bg-2:#ede5d3; --surface:#fbf7eb; --surface-2:#f1ecdb; --line:#d5ccb0; --line-2:#b8ac8a; --text:#2f2f2f; --text-mute:#7d6f55; --text-dim:#a89a7b; }
+[data-theme="sunset"][data-mode="dark"]{ --accent:#ff8e53; --accent-ink:#000000; --bg:#1c0f14; --bg-2:#2a1a1a; --surface:#331e1f; --surface-2:#3c2424; --line:#4d2c2a; --line-2:#6b3f3a; --text:#ffe8d6; --text-mute:#f5a98a; --text-dim:#a86960; }
+[data-theme="sunset"][data-mode="light"]{ --accent:#e55a2b; --accent-ink:#ffffff; --bg:#fff5e4; --bg-2:#ffe8cf; --surface:#fffaf0; --surface-2:#fff1dc; --line:#ffd1a8; --line-2:#ffb67a; --text:#3d2c2e; --text-mute:#a66244; --text-dim:#c99672; }
+
+/* ─── Base Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input, textarea { font: inherit; color: inherit; background: transparent; border: 0; outline: 0; }
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+
+/* scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ─── Shadcn Override ───────────────────────────────────────────── */
 @layer base {
-    :root {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-    }
-    .dark {
-        --background: 0 0% 3.9%;
-        --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
-        --card-foreground: 0 0% 98%;
-        --popover: 0 0% 3.9%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 0 0% 98%;
-        --primary-foreground: 0 0% 9%;
-        --secondary: 0 0% 14.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 0 0% 14.9%;
-        --muted-foreground: 0 0% 63.9%;
-        --accent: 0 0% 14.9%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 14.9%;
-        --input: 0 0% 14.9%;
-        --ring: 0 0% 83.1%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
-    }
+  :root {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 0 0% 83%;
+    --radius: 0.375rem;
+  }
+}
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
 }
 
-@layer base {
-    * {
-        @apply border-border;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
+/* ─── Global Animations ─────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px var(--accent); }
+  50%       { box-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent); }
+}
+@keyframes scanline {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 4px; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33%       { transform: translateY(-10px) rotate(1deg); }
+  66%       { transform: translateY(5px) rotate(-1deg); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+@keyframes slab-enter {
+  from { opacity: 0; transform: rotateX(60deg) rotateY(-20deg) translateZ(-100px) translateY(60px); }
+  to   { opacity: 1; transform: rotateX(0deg) rotateY(0deg) translateZ(0px) translateY(0px); }
+}
+@keyframes streak {
+  0%   { transform: translateX(-100%) skewX(-12deg); opacity: 0; }
+  50%  { opacity: 0.5; }
+  100% { transform: translateX(200%) skewX(-12deg); opacity: 0; }
 }
 
-@layer base {
-    [data-debug-wrapper="true"] {
-        display: contents !important;
-    }
+.animate-fadeInUp  { animation: fadeInUp  0.6s ease forwards; }
+.animate-fadeIn    { animation: fadeIn    0.4s ease forwards; }
+.animate-slideLeft { animation: slideInLeft 0.5s ease forwards; }
+.animate-slideRight{ animation: slideInRight 0.5s ease forwards; }
+.animate-float     { animation: float 6s ease-in-out infinite; }
+.animate-glow      { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-spin-slow { animation: spin-slow 20s linear infinite; }
+.animate-blink     { animation: blink 1s step-end infinite; }
 
-    [data-debug-wrapper="true"] > * {
-        margin-left: inherit;
-        margin-right: inherit;
-        margin-top: inherit;
-        margin-bottom: inherit;
-        padding-left: inherit;
-        padding-right: inherit;
-        padding-top: inherit;
-        padding-bottom: inherit;
-        column-gap: inherit;
-        row-gap: inherit;
-        gap: inherit;
-        border-left-width: inherit;
-        border-right-width: inherit;
-        border-top-width: inherit;
-        border-bottom-width: inherit;
-        border-left-style: inherit;
-        border-right-style: inherit;
-        border-top-style: inherit;
-        border-bottom-style: inherit;
-        border-left-color: inherit;
-        border-right-color: inherit;
-        border-top-color: inherit;
-        border-bottom-color: inherit;
-    }
+/* stagger delays */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+.delay-700 { animation-delay: 0.7s; }
+.delay-800 { animation-delay: 0.8s; }
+.delay-900 { animation-delay: 0.9s; }
+
+/* opacity: 0 initial state for stagger */
+.stagger { opacity: 0; }
+
+/* ─── Landing Specific ──────────────────────────────────────────── */
+.hero-slab-wrap {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+.hero-slab {
+  transform-style: preserve-3d;
+  animation: slab-enter 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+.hero-slab-a { animation-delay: 0.2s; }
+.hero-slab-b { animation-delay: 0.4s; }
+.hero-slab-c { animation-delay: 0.6s; }
+
+.streak-line {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.streak-line::after {
+  content: '';
+  position: absolute;
+  top: 40%;
+  left: 0;
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: streak 3s ease-in-out infinite;
+}
+
+/* ─── Canvas dot grid ────────────────────────────────────────────── */
+.canvas-dot-grid {
+  background-image: radial-gradient(circle, var(--line) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* ─── Editor node ────────────────────────────────────────────────── */
+.stk-node { 
+  position: absolute;
+  user-select: none;
+}
+.stk-node.selected {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 2px;
+}
+.stk-handle {
+  position: absolute;
+  width: 8px; height: 8px;
+  background: var(--bg);
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 0 6px var(--accent);
+}
+
+/* ─── Scanline overlay ──────────────────────────────────────────── */
+.scanline-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  mix-blend-mode: overlay;
+}
+
+/* ─── Input overrides ───────────────────────────────────────────── */
+.stk-input {
+  height: 28px;
+  padding: 0 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  transition: border-color 0.15s;
+}
+.stk-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* ─── Shimmer loader ────────────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }
