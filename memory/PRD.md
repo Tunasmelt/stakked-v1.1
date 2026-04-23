@@ -1,131 +1,106 @@
-# Stakked - Product Requirements Document
+# Stakked — Product Requirements Document
 
 ## Overview
-**Stakked** is a drag-and-drop UI creator for artists (music artists, digital artists, photographers, social media influencers). Users create dynamic portfolio pages, profile pages, and promo pages for their work without writing code.
+**Stakked** is a drag-and-drop UI creator for artists (music artists, digital artists, photographers, social media influencers). Users create dynamic portfolio/profile/promo pages without writing code.
 
 ## Architecture
-- **Frontend**: React 18 + React Router v6 + Tailwind CSS + Framer Motion + @dnd-kit (drag-and-drop) + idb (IndexedDB caching)
-- **Backend**: FastAPI + Motor (async MongoDB) + JWT Auth (bcrypt + python-jose)
-- **Database**: MongoDB (via MONGO_URL env var)
-- **AI**: Gemini 2.5 Flash via emergentintegrations (emergent LLM key)
+- **Frontend**: React 18 + React Router v6 + Tailwind + Framer Motion + @dnd-kit (drag-drop) + idb (IndexedDB)
+- **Backend**: FastAPI + Motor (async Mongo) + JWT (bcrypt + python-jose) + httpx (Pexels proxy)
+- **Database**: MongoDB via `MONGO_URL`
+- **AI**: Gemini 2.5 Flash via `emergentintegrations` (Emergent LLM key)
+- **Assets**: Pexels API proxied through `/api/assets/search` (key kept server-side)
 
 ## User Personas
-- Music artists building album promo pages
-- Digital artists showcasing portfolios
-- Photographers displaying galleries
-- Social media influencers creating link-in-bio pages
-- General creators building any kind of page
+Music artists, digital artists, photographers, influencers, general creators.
 
 ## Core Requirements (Static)
 
-### Auth
-- JWT-based custom auth with email + password
-- bcrypt password hashing
-- httponly cookie tokens (access + refresh)
-- Brute force protection (5 attempts → 15 min lockout)
+### Auth (JWT custom)
+- Email + password, bcrypt hashing
+- httponly access + refresh cookies
+- Brute-force protection (5 attempts → 15 min lockout)
 
-### Page Builder (Editor)
-- 3-column layout: ElementTray | Canvas | PropertiesPanel
-- Artboard with dot-grid background
-- Elements: Text, Image, Button, Shape, Music, Video, Social, Divider, Gallery, Icon, Form, Countdown
-- Drag from tray → drop on canvas
-- Click to select → shows properties panel
-- Resize handles on selected elements
-- Keyboard shortcuts (Delete, Arrow keys, Escape)
-- Auto-save to both MongoDB and IndexedDB (offline-first)
+### Editor
+- Top toolbar + LeftPanel (tray / layers / pages / assets) + Canvas + Inspector
+- **NO project-type gate** — create page → lands directly in editor
+- Elements: Container, Text, Image, Button, Shape, Music, Video, Social, Divider, Gallery, Icon, Form, Countdown, Embed, Map, Nav, Testimonial, Marquee
+- Drag from tray → drop on canvas; drag Pexels image → drop on canvas
+- Click to select → Inspector shows properties
+- Sub-pages: multiple pages per project, independent element state
+- Custom canvas width/height per sub-page
+- Auto-save debounced (MongoDB + IndexedDB)
+- Keyboard: Delete, Arrows (1px / 10px shift), Escape
 
-### Themes
-- 5 dynamic themes: Ghost, Neon, Brutal, Paper, Sunset
-- Each with dark + light mode variants
-- CSS variable-driven theming (--bg, --surface, --accent, --accent-ink, etc.)
+### Themes (persistent, project-level)
+- 5 themes × 2 modes (Ghost, Neon, Brutal, Paper, Sunset × dark/light)
+- Theme drawer accessible from toolbar; switches instantly, persists on reload
+- Theme scoped to editor (restores on unmount — doesn't leak to workspace)
 
 ### Publish
-- One-click publish with custom slug/URL
-- Public gallery at /gallery
-- Published pages at /p/:username/:slug
+- One-click publish with slug
+- Public gallery at `/gallery`
+- Published pages at `/p/:username/:slug`
 
-### AI Features
-- AI layout generation via Gemini 2.5 Flash
-- Describe page in plain English → elements generated
+### AI (Gemini)
+- "Describe page" → elements generated and added to canvas
 - Page summary generation
-- Animation suggestions
 
-## What's Been Implemented (2026-04-23)
+### Assets (Pexels)
+- LeftPanel Assets tab → search → drag result to canvas → image element with Pexels URL
+- API key never exposed to client
 
-### Landing Page ✅
-- Animated hero with 3D slab art
-- Typewriter effect for artist types
-- Feature cards section (6 features)
-- Showcase gallery (4 sample pages)
-- CTA section with accent glow
-- Full animation with CSS keyframes
+## What's Implemented
 
-### Auth ✅
-- Register with name, email, password, artist type selector
-- Login with brute force protection
-- JWT httponly cookies
-- Protected routes
+### 2026-04-23 — V1 MVP
+- Landing page with animated hero, typewriter, feature cards, showcase, CTA
+- Auth (register/login, brute-force, httponly JWT)
+- Workspace (project grid, filter tabs, new-page modal)
+- Editor V1 (3-col IDE layout, element tray, canvas w/ dot grid, breakpoints, zoom, properties, theme drawer, AI dock, publish modal, keyboard, auto-save + IndexedDB)
+- Gallery (filter + community grid)
+- Published page view
 
-### Workspace ✅
-- Sidebar with filter tabs (all/published/drafts)
-- Project grid (auto-fill, responsive)
-- Page cards with theme preview, status badges
-- New page modal (title, theme, type)
-- Empty state with "Create First" CTA
-
-### Editor ✅
-- 3-column IDE-style layout (240px | 1fr | 280px)
-- Element tray with 12 element types, search, hotkeys
-- Layer panel tab showing element stack
-- Canvas with dot-grid background
-- Artboard with breakpoint switching (820/640/390px)
-- Zoom control (25-200%, 25% increments)
-- Properties panel (transform, content, visibility, lock)
-- Theme drawer (5 themes × 2 modes)
-- AI dock overlay (Gemini integration)
-- Publish modal (slug, status, unpublish, export placeholders)
-- Keyboard shortcuts (Delete, Arrows, Escape)
-- Auto-save with debounce + IndexedDB caching
-- Save status indicator (unsaved/saved)
-
-### Gallery ✅
-- Filter by page type
-- Community published pages grid
-- Card hover with "View Page" overlay
-
-### Published Page View ✅
-- Renders elements at absolute positions
-- Theme/mode applied from page data
-- "Made with Stakked" watermark
+### 2026-04-23 — V2 Refactor (this session)
+- ✅ Removed "project types" gate — create page goes directly to editor
+- ✅ Split sidebar into `LeftPanel.jsx` (tray/layers/pages/assets) + `Inspector.jsx` (properties)
+- ✅ Theme made project-level and persistent via `PUT /api/pages/{id}`; theme drawer accessible in editor toolbar
+- ✅ Pexels integration: `/api/assets/search` proxy, LeftPanel "Assets" tab fetches & drag-drops photos
+- ✅ Sub-page management (add/rename/delete/switch) with independent element state
+- ✅ Custom canvas dimensions per sub-page (width/height editable from Inspector)
+- ✅ Fixed closure bug in `addSubPage` — new sub-page now auto-switches after creation
+- ✅ Fixed theme leak — editor restores previous `data-theme` on unmount
+- ✅ Testing: backend 19/19 pass, frontend 95% (all critical flows verified)
 
 ## Prioritized Backlog
 
-### P0 (Critical for next version)
-- [ ] Workflow canvas (n8n-style node builder) — Option B deferred
-- [ ] Full resize handles (drag to resize, not just select)
+### P0
+- [ ] Workflow canvas (n8n-style node builder) — Option B
+- [ ] Full resize handles on canvas elements (drag corners/edges)
 - [ ] Double-click to edit text inline on canvas
 
-### P1 (Important)
-- [ ] PDF/PNG/ZIP export (planned, placeholders in UI)
-- [ ] NLP animation addition (CSS animation picker per element)
-- [ ] Image search via Unsplash/Pexels API
-- [ ] Custom slug URL editor per user profile
-- [ ] Page caching improvements (stale-while-revalidate)
+### P1
+- [ ] NLP layout sequencer (richer Gemini integration — plain-English → positioned elements with themes & animations)
+- [ ] PDF / PNG / ZIP export
+- [ ] CSS animation picker per element
+- [ ] Custom slug per user profile
+- [ ] Stale-while-revalidate caching
 
-### P2 (Nice to have)
-- [ ] Groq API integration (user provides key)
+### P2
+- [ ] Groq API integration (user-provided key)
 - [ ] Template library (fork community pages)
-- [ ] Grid/snap guides customization
-- [ ] Multi-select elements
-- [ ] Undo/redo history
+- [ ] Grid/snap guide customization
+- [ ] Multi-select + undo/redo
 - [ ] Real-time collaboration
-- [ ] Custom domain mapping
+- [ ] Custom domains
 - [ ] Analytics per published page
+- [ ] Split `server.py` into routers (auth/pages/ai/assets) — currently ~502 lines
+
+## Known / Accepted Technical Debt
+- `server.py` is 502 lines (threshold 700) — modularize next P2 pass.
 
 ## Next Tasks
-1. Implement resize handles for canvas elements
-2. Add inline text editing
-3. Build image search integration
-4. Add animation library per element
-5. Implement workflow canvas (n8n-style)
-6. Add PDF export
+1. Workflow canvas (P0) or resize handles (P0) — user to prioritize
+2. NLP layout sequencer richer prompt chain (P1)
+3. Export pipeline (P1)
+
+## Test Credentials
+See `/app/memory/test_credentials.md`.

@@ -77,10 +77,18 @@ export default function Editor() {
     })();
   }, [id, navigate]);
 
-  // Apply theme to entire document
+  // Apply theme to entire document while editor is mounted; restore on unmount so it doesn't leak into workspace/landing.
   useEffect(() => {
+    const prevTheme = document.documentElement.getAttribute("data-theme");
+    const prevMode  = document.documentElement.getAttribute("data-mode");
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.setAttribute("data-mode", mode);
+    return () => {
+      if (prevTheme) document.documentElement.setAttribute("data-theme", prevTheme);
+      else           document.documentElement.removeAttribute("data-theme");
+      if (prevMode)  document.documentElement.setAttribute("data-mode", prevMode);
+      else           document.documentElement.removeAttribute("data-mode");
+    };
   }, [theme, mode]);
 
   // Auto-save debounced
@@ -133,9 +141,15 @@ export default function Editor() {
       elements: [],
       canvas_width: 1440, canvas_height: 2500, padding: 0, transition: "none"
     };
-    setSubPages(prev => [...prev, newSp]);
-    switchSubPage(newSp.id);
-  }, [subPages, switchSubPage]);
+    // Persist current edits to the currently active sub-page, then append the new one and switch.
+    setSubPages(prev => [
+      ...prev.map(sp => sp.id === activeSubPageId ? { ...sp, elements } : sp),
+      newSp,
+    ]);
+    setActiveSubPageId(newSp.id);
+    setElements([]);
+    setSelected(null);
+  }, [subPages, activeSubPageId, elements]);
 
   const renameSubPage = useCallback((spId, name) => {
     setSubPages(prev => prev.map(sp =>
