@@ -239,6 +239,10 @@ export default function Workspace() {
               onMouseEnter={e => e.currentTarget.style.color = "var(--text)"}
               onMouseLeave={e => e.currentTarget.style.color = "var(--text-mute)"}
             ><Users size={13} /> community</Link>
+            <Link to="/marketplace" data-testid="nav-marketplace" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: "var(--r-sm)", color: "var(--text-mute)", fontFamily: "var(--font-mono)", fontSize: 11, transition: "color 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.color = "var(--text)"}
+              onMouseLeave={e => e.currentTarget.style.color = "var(--text-mute)"}
+            ><LayoutGrid size={13} /> templates</Link>
           </div>
         </nav>
         <div style={{ padding: "12px 14px", borderTop: "1px solid var(--line)" }}>

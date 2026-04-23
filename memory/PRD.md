@@ -59,7 +59,16 @@ Music artists, digital artists, photographers, influencers, general creators.
 - Gallery (filter + community grid)
 - Published page view
 
-### 2026-04-23 — V4 Advanced Canvas + Templates (this session)
+### 2026-04-23 — V5 Backend modularization + features (this session)
+- ✅ **Backend split**: extracted `core.py` (db, JWT helpers, models) and created `/app/backend/routes/` package with `templates.py`, `marketplace.py`, `analytics.py`, `profile.py`. server.py now orchestrates auth/pages/ai/assets and mounts feature routers.
+- ✅ **Self-hosted CORS fonts**: moved Google Fonts `<link>` to `public/index.html` with `crossorigin="anonymous"`, removed `@import` from `index.css`. Fonts still cached by browser; export font embedding is no longer blocked by CORS.
+- ✅ **Group / Ungroup**: Cmd/Ctrl+G groups selection (tags elements with shared `groupId`), Cmd+Shift+G ungroups. Clicking any group member auto-selects the whole group for moving/resizing. Multi-select inspector shows group/ungroup buttons.
+- ✅ **Per-page analytics**: `POST /api/analytics/pageview/:pageId` increments view counter (public endpoint); `GET /api/analytics/page/:pageId` (owner-only) returns total views + 14-day breakdown + top 10 referrers.
+- ✅ **Custom user handle**: `GET/PUT /api/profile/me` lets users set a slug handle; `GET /api/profile/by-handle/:handle` is a public lookup used for @handle pages.
+- ✅ **Community template marketplace**: `GET /api/marketplace/templates` lists public templates (sorted by fork count); owners flip public via `POST /api/templates/:id/publish`; non-owners can `POST /api/templates/:id/use` to fork. New `/marketplace` route in the frontend with empty-state + fork button.
+- ✅ **Testing**: all new endpoints verified end-to-end via curl (create template → publish → list public → fork → lookup by handle → delete). Frontend lint clean, marketplace page renders with zero console errors.
+
+### 2026-04-23 — V4 Advanced Canvas + Templates
 - ✅ **Multi-select**: Shift+click, Cmd/Ctrl+A (select all), marquee drag-rectangle on empty canvas area
 - ✅ **Multi-element drag** — preserves relative positions with snap guides on primary element
 - ✅ **Workflow canvas** (n8n-style) — Trigger/Action/AI/Output nodes, draggable ports with Bezier edges, pan + Cmd+wheel zoom, per-node config inspector, persisted to page via PUT `/api/pages/{id}` `workflow` field
@@ -90,19 +99,17 @@ Fully functional editor & canvas:
 
 ## Prioritized Backlog
 
-### P2 (code quality / infra — no user-visible impact)
-- [ ] Split `server.py` (~600 lines) into `routes/` modules (auth, pages, ai, assets, templates)
-- [ ] Self-host Space Grotesk / JetBrains Mono / Instrument Sans via @font-face (improves PNG/PDF export font embedding)
+### P3 — Deferred (require multi-week infra / out-of-scope for current budget)
+- [ ] **Real-time collaboration** (WebSockets + CRDT like Yjs) — weeks of infra
+- [ ] **Custom domain mapping** (DNS + cloud-infra, certificate management)
+- [ ] **Runtime workflow execution** (need a full event interpreter and action registry; current workflow is editable + persisted but not yet interpreted)
 
-### P3 (nice-to-have future features)
-- [ ] Real-time collaboration (WebSockets + CRDT) — weeks of infra, deferred
-- [ ] Custom slug per user profile (url editor in workspace settings)
-- [ ] Custom domain mapping
-- [ ] Analytics per published page (views, referrers)
-- [ ] Grid/snap threshold customization
-- [ ] Group/ungroup elements (treat multi-selection as a single unit)
-- [ ] Runtime execution of workflow graphs (currently editable/saved but not interpreted)
-- [ ] Community template marketplace (share templates publicly)
+### P4 — Nice-to-have future features
+- [ ] Analytics dashboard UI (currently API-only — wire a chart view in /analytics/:pageId)
+- [ ] Public @handle page listing user's published creations
+- [ ] Template preview thumbnails (auto-generate via html-to-image on publish)
+- [ ] Template categorization + search in marketplace
+- [ ] Split remaining `server.py` monolith (auth/pages/ai/assets) into further routes/ modules — partially done in V5 for new features
 
 ## Known / Accepted Technical Debt
 - `server.py` is 502 lines (threshold 700) — modularize next P2 pass.

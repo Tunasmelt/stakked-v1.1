@@ -93,6 +93,7 @@ export default function Inspector({
   selectedEl, selectedCount, elements, setElements,
   onUpdate, onDelete, onDuplicate,
   onBringToFront, onSendToBack, onBringForward, onSendBackward,
+  onGroup, onUngroup,
   activeSubPage, onUpdateSubPage,
 }) {
   // Multi-select view
@@ -107,8 +108,10 @@ export default function Inspector({
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", padding: "2px 6px", border: "1px solid var(--line)", borderRadius: 3 }}>Inspector</span>
         </div>
         <div style={{ padding: 14, display: "grid", gap: 8 }}>
-          <button data-testid="multi-duplicate-btn" onClick={() => onDuplicate && onDuplicate()} className="stk-input" style={{ height: 32, cursor: "pointer", color: "var(--text)" }}>Duplicate selection ({selectedCount})</button>
-          <button data-testid="multi-delete-btn" onClick={() => onDelete && onDelete()} className="stk-input" style={{ height: 32, cursor: "pointer", color: "var(--danger)", borderColor: "var(--danger)" }}>Delete selection</button>
+          <button data-testid="multi-group-btn"     onClick={() => onGroup && onGroup()} className="stk-input" style={{ height: 32, cursor: "pointer", color: "var(--accent)", borderColor: "var(--accent)" }}>Group (⌘G)</button>
+          <button data-testid="multi-ungroup-btn"   onClick={() => onUngroup && onUngroup()} className="stk-input" style={{ height: 32, cursor: "pointer", color: "var(--text)" }}>Ungroup (⌘⇧G)</button>
+          <button data-testid="multi-duplicate-btn" onClick={() => onDuplicate && onDuplicate()} className="stk-input" style={{ height: 32, cursor: "pointer", color: "var(--text)" }}>Duplicate ({selectedCount})</button>
+          <button data-testid="multi-delete-btn"    onClick={() => onDelete && onDelete()} className="stk-input" style={{ height: 32, cursor: "pointer", color: "var(--danger)", borderColor: "var(--danger)" }}>Delete selection</button>
           <div style={{ borderTop: "1px dashed var(--line)", margin: "8px 0" }} />
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)", letterSpacing: "0.1em" }}>Z-ORDER</div>
           <div style={{ display: "flex", gap: 3 }}>
@@ -118,8 +121,8 @@ export default function Inspector({
             <ZBtn testid="z-bring-front"  onClick={() => onBringToFront  && onBringToFront()}  icon={ArrowUpToLine}   label="Bring to front" />
           </div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", marginTop: 8, lineHeight: 1.6 }}>
-            // Drag any selected element to move them all together.<br/>
-            // ⌘D dupes · Delete removes
+            // Drag any selected to move all together.<br/>
+            // Group locks them as a unit for future clicks.
           </div>
         </div>
       </aside>

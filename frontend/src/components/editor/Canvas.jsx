@@ -213,17 +213,18 @@ export default function Canvas({
     if (el.locked) return;
     if (e.button !== 0) return;
     e.stopPropagation();
-    // Selection logic
+    // If this element belongs to a group, treat the whole group as the unit (unless Shift toggling).
+    const groupMembers = el.groupId ? elements.filter(x => x.groupId === el.groupId).map(x => x.id) : [el.id];
     const isSelected = selectedSet.has(el.id);
     let working;
     if (e.shiftKey) {
-      // Toggle in selection
-      if (isSelected) working = (selectedIds || []).filter(id => id !== el.id);
-      else working = [...(selectedIds || []), el.id];
+      if (isSelected) working = (selectedIds || []).filter(id => !groupMembers.includes(id));
+      else working = Array.from(new Set([...(selectedIds || []), ...groupMembers]));
       setSelectedIds(working);
     } else {
-      working = isSelected ? selectedIds : [el.id];
-      if (!isSelected) setSelectedIds([el.id]);
+      const alreadyAllGroupSelected = groupMembers.every(g => selectedSet.has(g));
+      working = alreadyAllGroupSelected ? selectedIds : groupMembers;
+      if (!alreadyAllGroupSelected) setSelectedIds(groupMembers);
     }
     if (editingText === el.id) return;
 

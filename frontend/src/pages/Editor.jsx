@@ -265,6 +265,28 @@ export default function Editor() {
     setElements(prev => prev.map(e => e.id === elId ? { ...e, ...changes } : e));
   }, [pushHistory]);
 
+  // ─── Group / Ungroup ──────────────────────────────────────────────────────
+  const groupSelection = useCallback((ids = selectedIdsRef.current) => {
+    if (!ids || ids.length < 2) return;
+    const groupId = `grp-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+    const idSet = new Set(ids);
+    pushHistory();
+    setElements(prev => prev.map(e => idSet.has(e.id) ? { ...e, groupId } : e));
+  }, [pushHistory]);
+
+  const ungroupSelection = useCallback((ids = selectedIdsRef.current) => {
+    if (!ids || !ids.length) return;
+    // Find all groups touched, remove groupId from every element in them.
+    const groups = new Set();
+    for (const id of ids) {
+      const el = elementsRef.current.find(e => e.id === id);
+      if (el?.groupId) groups.add(el.groupId);
+    }
+    if (!groups.size) return;
+    pushHistory();
+    setElements(prev => prev.map(e => groups.has(e.groupId) ? { ...e, groupId: undefined } : e));
+  }, [pushHistory]);
+
   const handleAiGenerate = (newElements) => {
     pushHistory();
     setElements(prev => {
@@ -318,6 +340,12 @@ export default function Editor() {
       if (meta && e.key.toLowerCase() === "x" && ids.length) { e.preventDefault(); copySelection(ids); handleDeleteSelection(ids); return; }
       if (meta && e.key === "]" && ids.length) { e.preventDefault(); e.shiftKey ? bringToFront(ids) : bringForward(ids); return; }
       if (meta && e.key === "[" && ids.length) { e.preventDefault(); e.shiftKey ? sendToBack(ids) : sendBackward(ids); return; }
+      // Group / Ungroup
+      if (meta && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        if (e.shiftKey) ungroupSelection(ids); else groupSelection(ids);
+        return;
+      }
       if ((e.key === "Delete" || e.key === "Backspace") && ids.length) { e.preventDefault(); handleDeleteSelection(ids); return; }
       if (e.key === "Escape") { setSelectedIds([]); return; }
       if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key) && ids.length) {
@@ -332,7 +360,7 @@ export default function Editor() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleSave, undo, redo, copySelection, pasteClipboard, duplicateSelection, handleDeleteSelection, bringToFront, sendToBack, bringForward, sendBackward, pushHistory]);
+  }, [handleSave, undo, redo, copySelection, pasteClipboard, duplicateSelection, handleDeleteSelection, bringToFront, sendToBack, bringForward, sendBackward, pushHistory, groupSelection, ungroupSelection]);
 
   if (loading) {
     return (
@@ -440,6 +468,8 @@ export default function Editor() {
             onSendToBack={() => sendToBack()}
             onBringForward={() => bringForward()}
             onSendBackward={() => sendBackward()}
+            onGroup={() => groupSelection()}
+            onUngroup={() => ungroupSelection()}
             activeSubPage={activeSubPage}
             onUpdateSubPage={updateSubPage}
           />

@@ -489,96 +489,8 @@ async def animation_suggestions(body: dict, user: dict = Depends(get_current_use
 async def root():
     return {"message": "Stakked API", "version": "1.0.0"}
 
-# ─── Templates ─────────────────────────────────────────────────────────────────
-class TemplateCreate(BaseModel):
-    name: str
-    description: Optional[str] = ""
-    theme: str = "brutal"
-    mode: str = "dark"
-    elements: List[Dict[str, Any]] = []
-    canvas_width: int = 1440
-    canvas_height: int = 2500
-    category: Optional[str] = "general"
-
-@router.post("/templates")
-async def create_template(body: TemplateCreate, user: dict = Depends(get_current_user)):
-    now = datetime.now(timezone.utc).isoformat()
-    doc = {
-        "_id": ObjectId(),
-        "user_id": user["id"],
-        "name": body.name,
-        "description": body.description,
-        "theme": body.theme,
-        "mode": body.mode,
-        "elements": body.elements,
-        "canvas_width": body.canvas_width,
-        "canvas_height": body.canvas_height,
-        "category": body.category,
-        "created_at": now,
-    }
-    await db.templates.insert_one(doc)
-    doc["id"] = str(doc.pop("_id"))
-    return doc
-
-@router.get("/templates")
-async def list_templates(user: dict = Depends(get_current_user)):
-    items = []
-    async for doc in db.templates.find({"user_id": user["id"]}).sort("created_at", -1):
-        doc["id"] = str(doc.pop("_id"))
-        items.append(doc)
-    return items
-
-@router.delete("/templates/{template_id}")
-async def delete_template(template_id: str, user: dict = Depends(get_current_user)):
-    try:
-        oid = ObjectId(template_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid template id")
-    res = await db.templates.delete_one({"_id": oid, "user_id": user["id"]})
-    if res.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return {"ok": True}
-
-@router.post("/templates/{template_id}/use")
-async def use_template(template_id: str, body: Dict[str, Any], user: dict = Depends(get_current_user)):
-    # Create a new page from a template
-    try:
-        oid = ObjectId(template_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid template id")
-    tpl = await db.templates.find_one({"_id": oid, "user_id": user["id"]})
-    if not tpl:
-        raise HTTPException(status_code=404, detail="Template not found")
-    title = body.get("title") or tpl["name"]
-    now = datetime.now(timezone.utc).isoformat()
-    sub_id = f"sp-{uuid.uuid4().hex[:8]}"
-    sub_pages = [{
-        "id": sub_id, "name": "Home", "slug": "home",
-        "elements": tpl.get("elements", []),
-        "canvas_width": tpl.get("canvas_width", 1440),
-        "canvas_height": tpl.get("canvas_height", 2500),
-        "padding": 0, "transition": "none",
-    }]
-    page_doc = {
-        "_id": ObjectId(),
-        "user_id": user["id"],
-        "title": title,
-        "description": tpl.get("description", ""),
-        "theme": tpl.get("theme", "brutal"),
-        "mode": tpl.get("mode", "dark"),
-        "elements": tpl.get("elements", []),
-        "sub_pages": sub_pages,
-        "canvas_width": tpl.get("canvas_width", 1440),
-        "canvas_height": tpl.get("canvas_height", 2500),
-        "published": False,
-        "slug": slugify(title),
-        "workflow": {"nodes": [], "edges": []},
-        "created_at": now,
-        "updated_at": now,
-    }
-    await db.pages.insert_one(page_doc)
-    page_doc["id"] = str(page_doc.pop("_id"))
-    return page_doc
+# Templates, marketplace, analytics, and profile routes live in /app/backend/routes/
+# and are mounted below.
 
 # ─── Assets (Pexels proxy) ─────────────────────────────────────────────────────
 @router.get("/assets/search")
@@ -617,3 +529,13 @@ async def search_assets(q: str = "abstract art", per_page: int = 20, page: int =
         raise HTTPException(status_code=500, detail=str(e))
 
 app.include_router(router)
+
+# Mount feature routers (located in /app/backend/routes/)
+from routes import templates as templates_routes
+from routes import marketplace as marketplace_routes
+from routes import analytics as analytics_routes
+from routes import profile as profile_routes
+app.include_router(templates_routes.router,    prefix="/api")
+app.include_router(marketplace_routes.router,  prefix="/api")
+app.include_router(analytics_routes.router,    prefix="/api")
+app.include_router(profile_routes.router,      prefix="/api")

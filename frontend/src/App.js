@@ -11,6 +11,7 @@ const Workspace   = lazy(() => import("./pages/Workspace"));
 const Editor      = lazy(() => import("./pages/Editor"));
 const Gallery     = lazy(() => import("./pages/Gallery"));
 const Published   = lazy(() => import("./pages/PublishedPage"));
+const Marketplace = lazy(() => import("./pages/Marketplace"));
 
 function Loader() {
   return (
@@ -34,6 +35,7 @@ function App() {
               <Route path="/login"     element={<Auth mode="login" />} />
               <Route path="/register"  element={<Auth mode="register" />} />
               <Route path="/gallery"   element={<Gallery />} />
+              <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/p/:username/:slug" element={<Published />} />
               <Route path="/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
               <Route path="/editor/:id?"    element={<ProtectedRoute><Editor /></ProtectedRoute>} />

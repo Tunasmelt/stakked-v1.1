@@ -8,6 +8,8 @@ async function captureArtboardPng(artboardEl) {
   return await toPng(artboardEl, {
     pixelRatio: 2,
     cacheBust: true,
+    // Fonts are CORS-enabled in index.html, but embedding is still flaky across
+    // engines; skip font embedding — browsers cache fonts and renders at display time.
     skipFonts: true,
     backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--surface") || "#000",
   });
