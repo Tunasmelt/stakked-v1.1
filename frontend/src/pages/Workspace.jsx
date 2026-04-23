@@ -68,10 +68,20 @@ function PageCard({ page, onDelete, onOpen }) {
   );
 }
 
-function NewPageModal({ onClose, onCreate }) {
+function NewPageModal({ onClose, onCreate, onUseTemplate }) {
   const [title, setTitle]   = useState("");
   const [theme, setTheme]   = useState("brutal");
   const [loading, setLoading] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [tplLoading, setTplLoading] = useState(true);
+
+  React.useEffect(() => {
+    (async () => {
+      try { const r = await api.get("/templates"); setTemplates(r.data || []); }
+      catch (e) { /* ignore */ }
+      finally { setTplLoading(false); }
+    })();
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -82,16 +92,23 @@ function NewPageModal({ onClose, onCreate }) {
     onClose();
   };
 
+  const applyTemplate = async (tpl) => {
+    const t = title.trim() || `${tpl.name} — copy`;
+    setLoading(true);
+    try { await onUseTemplate(tpl.id, t); } finally { setLoading(false); }
+    onClose();
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={onClose}>
-      <div data-testid="new-page-modal" style={{ background: "var(--surface-2)", border: "1px solid var(--line-2)", borderRadius: "var(--r-lg)", padding: 28, width: 380, animation: "fadeInUp 0.25s ease" }} onClick={e => e.stopPropagation()}>
+      <div data-testid="new-page-modal" style={{ background: "var(--surface-2)", border: "1px solid var(--line-2)", borderRadius: "var(--r-lg)", padding: 28, width: 440, maxHeight: "90vh", overflow: "auto", animation: "fadeInUp 0.25s ease" }} onClick={e => e.stopPropagation()}>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-mute)", marginBottom: 20 }}>// NEW PROJECT</div>
         <form onSubmit={submit}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.12em", marginBottom: 6 }}>PROJECT TITLE</label>
             <input data-testid="new-page-title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Untitled Project" required autoFocus className="stk-input" style={{ width: "100%", height: 40, fontSize: 14 }} />
           </div>
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 20 }}>
             <label style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.12em", marginBottom: 8 }}>THEME</label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
               {THEMES.map(t => (
@@ -111,10 +128,44 @@ function NewPageModal({ onClose, onCreate }) {
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={onClose} style={{ flex: 1, height: 40, border: "1px solid var(--line)", borderRadius: "var(--r-sm)", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-mute)" }}>CANCEL</button>
             <button data-testid="create-page-btn" type="submit" disabled={loading} style={{ flex: 2, height: 40, background: loading ? "var(--line)" : "var(--accent)", color: loading ? "var(--text-mute)" : "var(--accent-ink)", borderRadius: "var(--r-sm)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 12 }}>
-              {loading ? "CREATING…" : "CREATE PROJECT →"}
+              {loading ? "CREATING…" : "CREATE BLANK →"}
             </button>
           </div>
         </form>
+
+        {/* Templates section */}
+        <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px dashed var(--line)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.12em" }}>// OR START FROM TEMPLATE</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-dim)" }}>{templates.length}</span>
+          </div>
+          {tplLoading ? (
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)" }}>loading…</div>
+          ) : templates.length === 0 ? (
+            <div style={{ padding: 14, background: "var(--bg)", border: "1px dashed var(--line)", borderRadius: "var(--r-sm)", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-dim)", lineHeight: 1.6 }}>
+              No templates yet. Save a sub-page from the editor (toolbar → ↗ Template) to reuse it here.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 6, maxHeight: 200, overflow: "auto" }}>
+              {templates.map(tpl => (
+                <button key={tpl.id} type="button" data-testid={`template-use-${tpl.id}`} onClick={() => applyTemplate(tpl)} disabled={loading} style={{
+                  padding: "10px 12px", display: "flex", alignItems: "center", gap: 10,
+                  background: "var(--bg)", border: "1px solid var(--line)", borderRadius: "var(--r-sm)",
+                  transition: "border-color 0.15s, background 0.15s", textAlign: "left", cursor: "pointer"
+                }}
+                  onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.background = "var(--surface)"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--line)"; e.currentTarget.style.background = "var(--bg)"; }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 999, background: THEME_COLORS[tpl.theme] || "var(--accent)", flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tpl.name}</div>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-dim)", marginTop: 2 }}>{tpl.theme} · {(tpl.elements || []).length} elements</div>
+                  </div>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)" }}>→</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -139,6 +190,11 @@ export default function Workspace() {
 
   const handleCreate = async (data) => {
     const r = await api.post("/pages", data);
+    navigate(`/editor/${r.data.id}`);
+  };
+
+  const handleUseTemplate = async (templateId, title) => {
+    const r = await api.post(`/templates/${templateId}/use`, { title });
     navigate(`/editor/${r.data.id}`);
   };
 
@@ -248,7 +304,7 @@ export default function Workspace() {
         )}
       </main>
 
-      {showNew && <NewPageModal onClose={() => setShowNew(false)} onCreate={handleCreate} />}
+      {showNew && <NewPageModal onClose={() => setShowNew(false)} onCreate={handleCreate} onUseTemplate={handleUseTemplate} />}
     </div>
   );
 }

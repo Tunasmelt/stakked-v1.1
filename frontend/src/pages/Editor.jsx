@@ -274,6 +274,26 @@ export default function Editor() {
     setShowAi(false);
   };
 
+  const handleSaveTemplate = async () => {
+    const name = window.prompt("Template name:", (page?.title || "Untitled") + " template");
+    if (!name || !name.trim()) return;
+    try {
+      await api.post("/templates", {
+        name: name.trim(),
+        description: "",
+        theme, mode,
+        elements: elementsRef.current,
+        canvas_width: activeSubPage?.canvas_width || 1440,
+        canvas_height: activeSubPage?.canvas_height || 2500,
+        category: "custom",
+      });
+      // Lightweight confirmation
+      window.alert(`Template "${name.trim()}" saved. Use it from Workspace → New Project.`);
+    } catch (e) {
+      window.alert("Failed to save template: " + (e.response?.data?.detail || e.message));
+    }
+  };
+
   const handleThemeChange = (t) => { setTheme(t); setShowTheme(false); };
   const handleModeChange  = (m) => { setMode(m); };
 
@@ -340,6 +360,7 @@ export default function Editor() {
         onSave={() => handleSave()}
         onPublish={() => setShowPublish(true)}
         onExport={() => setShowExport(true)}
+        onSaveTemplate={handleSaveTemplate}
         onThemeDrawer={() => setShowTheme(v => !v)}
         onAiDock={() => setShowAi(v => !v)}
         workflowMode={workflowMode}

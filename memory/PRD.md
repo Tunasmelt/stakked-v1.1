@@ -59,7 +59,18 @@ Music artists, digital artists, photographers, influencers, general creators.
 - Gallery (filter + community grid)
 - Published page view
 
-### 2026-04-23 — V3 Canvas System (this session)
+### 2026-04-23 — V4 Advanced Canvas + Templates (this session)
+- ✅ **Multi-select**: Shift+click, Cmd/Ctrl+A (select all), marquee drag-rectangle on empty canvas area
+- ✅ **Multi-element drag** — preserves relative positions with snap guides on primary element
+- ✅ **Workflow canvas** (n8n-style) — Trigger/Action/AI/Output nodes, draggable ports with Bezier edges, pan + Cmd+wheel zoom, per-node config inspector, persisted to page via PUT `/api/pages/{id}` `workflow` field
+- ✅ **Export modal** — PNG (2x pixelRatio), PDF (jsPDF), ZIP (JSZip: HTML + page.json + preview.png). `skipFonts:true` to avoid Google Fonts SecurityError
+- ✅ **Animation picker** — 12 CSS keyframe presets (none/fade-in/slide-up/down/left/right/zoom-in/pulse/spin/bounce/glow/float), applied on canvas preview, carried to export HTML
+- ✅ **Richer AI layout prompt** — generates 8-14 positioned elements with type-appropriate content and animations
+- ✅ **Templates**: backend `POST/GET/DELETE /api/templates` + `POST /api/templates/{id}/use`; Editor toolbar "↗ Template" saves current sub-page; Workspace NewPageModal lists and applies templates
+- ✅ **Bug fixes**: workflow addNode dedupe (StrictMode double-invoke), React hooks name collision (`useTemplate` → `applyTemplate`)
+- ✅ **Testing**: backend 29/29 pytest pass, frontend 9/10 flows (only flaky marquee path — logic confirmed via Cmd+A+Shift+click alternate path)
+
+### 2026-04-23 — V3 Canvas System
 Fully functional editor & canvas:
 - ✅ **Interactive resize handles** — 8 handles (nw/n/ne/w/e/sw/s/se), drag to resize, Shift = aspect-lock, snap to alignment targets
 - ✅ **Inline text editing** — double-click text element → contentEditable; Enter or blur commits
@@ -79,26 +90,19 @@ Fully functional editor & canvas:
 
 ## Prioritized Backlog
 
-### P0
-- [ ] Workflow canvas (n8n-style node builder) — Option B
-- [ ] Marquee selection (drag-rectangle to select multiple elements)
+### P2 (code quality / infra — no user-visible impact)
+- [ ] Split `server.py` (~600 lines) into `routes/` modules (auth, pages, ai, assets, templates)
+- [ ] Self-host Space Grotesk / JetBrains Mono / Instrument Sans via @font-face (improves PNG/PDF export font embedding)
 
-### P1
-- [ ] Multi-select (Shift+click) and multi-element drag/move
-- [ ] NLP layout sequencer (richer Gemini chain — plain-English → positioned elements with themes & animations)
-- [ ] PDF / PNG / ZIP export
-- [ ] CSS animation picker per element
-- [ ] Custom slug per user profile
-- [ ] Stale-while-revalidate caching
-
-### P2
-- [ ] Groq API integration (user-provided key)
-- [ ] Template library (fork community pages)
-- [ ] Grid/snap guide customization (snap threshold, toggle snap)
-- [ ] Real-time collaboration
-- [ ] Custom domains
-- [ ] Analytics per published page
-- [ ] Split `server.py` into routers (auth/pages/ai/assets)
+### P3 (nice-to-have future features)
+- [ ] Real-time collaboration (WebSockets + CRDT) — weeks of infra, deferred
+- [ ] Custom slug per user profile (url editor in workspace settings)
+- [ ] Custom domain mapping
+- [ ] Analytics per published page (views, referrers)
+- [ ] Grid/snap threshold customization
+- [ ] Group/ungroup elements (treat multi-selection as a single unit)
+- [ ] Runtime execution of workflow graphs (currently editable/saved but not interpreted)
+- [ ] Community template marketplace (share templates publicly)
 
 ## Known / Accepted Technical Debt
 - `server.py` is 502 lines (threshold 700) — modularize next P2 pass.

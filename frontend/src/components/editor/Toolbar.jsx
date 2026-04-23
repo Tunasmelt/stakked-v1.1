@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, RotateCcw, Undo2, Redo2, Monitor, Tablet, Smartphone, ZoomIn, ZoomOut, Globe, Sparkles, Eye, Download, ChevronDown } from "lucide-react";
 
-export default function Toolbar({ page, activeSubPage, theme, mode, bp, setBp, zoom, setZoom, canvasWidth, canvasHeight, onCanvasWidthChange, onCanvasHeightChange, onPublish, onThemeDrawer, onAiDock, onSave, saved, onWorkflow, workflowMode, onUndo, onRedo, canUndo, canRedo, onExport }) {
+export default function Toolbar({ page, activeSubPage, theme, mode, bp, setBp, zoom, setZoom, canvasWidth, canvasHeight, onCanvasWidthChange, onCanvasHeightChange, onPublish, onThemeDrawer, onAiDock, onSave, saved, onWorkflow, workflowMode, onUndo, onRedo, canUndo, canRedo, onExport, onSaveTemplate }) {
   return (
     <div style={{
       height: 42, display: "flex", alignItems: "center", gap: 0,
@@ -134,6 +134,18 @@ export default function Toolbar({ page, activeSubPage, theme, mode, bp, setBp, z
         <div style={{ width: 6, height: 6, borderRadius: "50%", background: saved ? "var(--ok)" : "var(--accent)", boxShadow: saved ? "0 0 4px var(--ok)" : "0 0 4px var(--accent)", flexShrink: 0 }} />
         {saved ? "saved" : "unsaved"}
       </div>
+
+      {/* Save as template */}
+      {onSaveTemplate && (
+        <button data-testid="save-template-btn" onClick={onSaveTemplate} title="Save current sub-page as template" style={{
+          padding: "0 8px", height: 28, margin: "0 2px", border: "1px solid var(--line)", borderRadius: "var(--r-sm)",
+          fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)", transition: "all 0.15s"
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--line)"; e.currentTarget.style.color = "var(--text-mute)"; }}>
+          ↗ Template
+        </button>
+      )}
 
       {/* AI button */}
       <button data-testid="ai-dock-btn" onClick={onAiDock} style={{
