@@ -3,9 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../utils/api";
 import { savePage, loadPage } from "../utils/db";
 import Toolbar from "../components/editor/Toolbar";
-import ElementTray from "../components/editor/ElementTray";
+import LeftPanel from "../components/editor/LeftPanel";
 import Canvas from "../components/editor/Canvas";
-import PropertiesPanel from "../components/editor/PropertiesPanel";
+import Inspector from "../components/editor/Inspector";
 import ThemeDrawer from "../components/editor/ThemeDrawer";
 import AiDock from "../components/editor/AiDock";
 import PublishModal from "../components/editor/PublishModal";
@@ -14,16 +14,19 @@ export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [page, setPage]         = useState(null);
-  const [elements, setElements] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [bp, setBp]             = useState("desktop");
-  const [zoom, setZoom]         = useState(75);
-  const [leftTab, setLeftTab]   = useState("elements");
-  const [theme, setTheme]       = useState("neon");
-  const [mode, setMode]         = useState("dark");
-  const [saved, setSaved]       = useState(true);
-  const [loading, setLoading]   = useState(true);
+  const [page, setPage]               = useState(null);
+  const [subPages, setSubPages]       = useState([]);
+  const [activeSubPageId, setActiveSubPageId] = useState(null);
+  const [elements, setElements]       = useState([]);
+  const [selected, setSelected]       = useState(null);
+  const [bp, setBp]                   = useState("desktop");
+  const [zoom, setZoom]               = useState(75);
+  const [leftTab, setLeftTab]         = useState("insert");
+  const [theme, setTheme]             = useState("brutal");
+  const [mode, setMode]               = useState("dark");
+  const [saved, setSaved]             = useState(true);
+  const [loading, setLoading]         = useState(true);
+  const [workflowMode, setWorkflowMode] = useState(false);
 
   const [showTheme,   setShowTheme]   = useState(false);
   const [showAi,      setShowAi]      = useState(false);
@@ -33,64 +36,127 @@ export default function Editor() {
   const [aiLines,    setAiLines]     = useState([]);
 
   const saveTimer = useRef(null);
+  const elementsRef = useRef(elements);
+  const subPagesRef = useRef(subPages);
+  const activeSubPageIdRef = useRef(activeSubPageId);
+
+  // Keep refs in sync
+  useEffect(() => { elementsRef.current = elements; }, [elements]);
+  useEffect(() => { subPagesRef.current = subPages; }, [subPages]);
+  useEffect(() => { activeSubPageIdRef.current = activeSubPageId; }, [activeSubPageId]);
 
   // Load page
   useEffect(() => {
     if (!id) { navigate("/workspace"); return; }
     (async () => {
-      // Try IndexedDB first for instant load
       const local = await loadPage(id);
       if (local) {
         setPage(local);
-        setElements(local.elements || []);
-        setTheme(local.theme || "neon");
+        const sps = local.sub_pages?.length ? local.sub_pages : [{ id: `sp-default`, name: "Home", slug: "home", elements: local.elements || [], canvas_width: 1440, canvas_height: 2500, padding: 0, transition: "none" }];
+        setSubPages(sps);
+        setActiveSubPageId(sps[0].id);
+        setElements(sps[0].elements || []);
+        setTheme(local.theme || "brutal");
         setMode(local.mode || "dark");
       }
       try {
         const r = await api.get(`/pages/${id}`);
-        setPage(r.data);
-        setElements(r.data.elements || []);
-        setTheme(r.data.theme || "neon");
-        setMode(r.data.mode || "dark");
-        await savePage(r.data);
+        const data = r.data;
+        setPage(data);
+        const sps = data.sub_pages?.length ? data.sub_pages : [{ id: `sp-default`, name: "Home", slug: "home", elements: data.elements || [], canvas_width: 1440, canvas_height: 2500, padding: 0, transition: "none" }];
+        setSubPages(sps);
+        setActiveSubPageId(sps[0].id);
+        setElements(sps[0].elements || []);
+        setTheme(data.theme || "brutal");
+        setMode(data.mode || "dark");
+        await savePage({ ...data, sub_pages: sps });
       } catch (e) {
-        if (!local) { navigate("/workspace"); }
+        if (!local) navigate("/workspace");
       }
       setLoading(false);
     })();
   }, [id, navigate]);
 
-  // Apply theme to editor scope
+  // Apply theme to entire document
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.setAttribute("data-mode", mode);
   }, [theme, mode]);
 
-  // Auto-save (debounced)
-  const triggerSave = useCallback(() => {
-    setSaved(false);
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      handleSave(false);
-    }, 2000);
-  }, [elements, theme, mode, page]);
-
+  // Auto-save debounced
   useEffect(() => {
-    if (page && !loading) triggerSave();
-  }, [elements, theme, mode]);
+    if (!loading && page) {
+      setSaved(false);
+      clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => { handleSave(true); }, 2000);
+    }
+  }, [elements, theme, mode, subPages]);
 
-  const handleSave = async (notify = true) => {
+  const buildSavePayload = () => {
+    const updatedSubPages = subPagesRef.current.map(sp =>
+      sp.id === activeSubPageIdRef.current ? { ...sp, elements: elementsRef.current } : sp
+    );
+    return { sub_pages: updatedSubPages, elements: elementsRef.current, theme, mode };
+  };
+
+  const handleSave = useCallback(async (silent = false) => {
     if (!id || !page) return;
     try {
-      const updated = await api.put(`/pages/${id}`, { elements, theme, mode });
-      const newPage = { ...page, ...updated.data, elements };
+      const payload = buildSavePayload();
+      const r = await api.put(`/pages/${id}`, payload);
+      const newPage = { ...page, ...r.data };
       setPage(newPage);
-      await savePage(newPage);
+      await savePage({ ...newPage, sub_pages: payload.sub_pages });
       setSaved(true);
-    } catch (e) {
-      console.error("Save failed", e);
+    } catch (e) { console.error("Save failed", e); }
+  }, [id, page, theme, mode]);
+
+  // Sub-page management
+  const switchSubPage = useCallback((newId) => {
+    // Save current elements to current sub-page
+    setSubPages(prev => prev.map(sp =>
+      sp.id === activeSubPageId ? { ...sp, elements } : sp
+    ));
+    const sp = subPages.find(s => s.id === newId);
+    if (sp) {
+      setElements(sp.elements || []);
+      setActiveSubPageId(newId);
+      setSelected(null);
     }
-  };
+  }, [activeSubPageId, elements, subPages]);
+
+  const addSubPage = useCallback(() => {
+    const newSp = {
+      id: `sp-${Date.now()}`,
+      name: `Page ${subPages.length + 1}`,
+      slug: `page-${subPages.length + 1}`,
+      elements: [],
+      canvas_width: 1440, canvas_height: 2500, padding: 0, transition: "none"
+    };
+    setSubPages(prev => [...prev, newSp]);
+    switchSubPage(newSp.id);
+  }, [subPages, switchSubPage]);
+
+  const renameSubPage = useCallback((spId, name) => {
+    setSubPages(prev => prev.map(sp =>
+      sp.id === spId ? { ...sp, name, slug: name.toLowerCase().replace(/\s+/g, "-") } : sp
+    ));
+  }, []);
+
+  const deleteSubPage = useCallback((spId) => {
+    if (subPages.length <= 1) return;
+    const remaining = subPages.filter(sp => sp.id !== spId);
+    setSubPages(remaining);
+    if (activeSubPageId === spId) {
+      setActiveSubPageId(remaining[0].id);
+      setElements(remaining[0].elements || []);
+      setSelected(null);
+    }
+  }, [subPages, activeSubPageId]);
+
+  const updateSubPage = useCallback((updated) => {
+    setSubPages(prev => prev.map(sp => sp.id === updated.id ? { ...sp, ...updated } : sp));
+  }, []);
 
   const handleDeleteElement = (elId) => {
     setElements(prev => prev.filter(e => e.id !== elId));
@@ -100,23 +166,22 @@ export default function Editor() {
   const handleAiGenerate = (newElements) => {
     setElements(prev => {
       const ids = new Set(prev.map(e => e.id));
-      const fresh = newElements.filter(e => !ids.has(e.id));
-      return [...prev, ...fresh];
+      return [...prev, ...newElements.filter(e => !ids.has(e.id))];
     });
     setShowAi(false);
   };
 
-  const handlePublished = (updated) => {
-    setPage(p => ({ ...p, ...updated }));
-  };
+  const handleThemeChange = (t) => { setTheme(t); setShowTheme(false); };
+  const handleModeChange  = (m) => { setMode(m); };
 
-  const selectedEl = elements.find(e => e.id === selected);
+  const activeSubPage = subPages.find(sp => sp.id === activeSubPageId);
+  const selectedEl    = elements.find(e => e.id === selected);
 
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-mute)", letterSpacing: "0.14em" }}>
-          LOADING EDITOR<span className="animate-blink">_</span>
+          LOADING<span className="animate-blink">_</span>
         </span>
       </div>
     );
@@ -124,42 +189,44 @@ export default function Editor() {
 
   return (
     <div data-testid="editor-page" style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)" }}>
-      {/* Toolbar */}
+      {/* Top toolbar */}
       <Toolbar
-        pageTitle={page?.title}
+        page={page}
+        activeSubPage={activeSubPage}
         theme={theme}
-        bp={bp}
-        setBp={setBp}
-        zoom={zoom}
-        setZoom={setZoom}
+        mode={mode}
+        bp={bp} setBp={setBp}
+        zoom={zoom} setZoom={setZoom}
+        canvasWidth={activeSubPage?.canvas_width || 1440}
+        canvasHeight={activeSubPage?.canvas_height || 2500}
+        onCanvasWidthChange={w => updateSubPage({ ...activeSubPage, canvas_width: w })}
+        onCanvasHeightChange={h => updateSubPage({ ...activeSubPage, canvas_height: h })}
         saved={saved}
-        onSave={() => handleSave(true)}
+        onSave={() => handleSave(false)}
         onPublish={() => setShowPublish(true)}
         onThemeDrawer={() => setShowTheme(v => !v)}
         onAiDock={() => setShowAi(v => !v)}
+        workflowMode={workflowMode}
+        onWorkflow={setWorkflowMode}
       />
 
-      {/* Status bar */}
-      <div style={{
-        height: 24, background: "var(--bg-2)", borderBottom: "1px solid var(--line)",
-        display: "flex", alignItems: "center", paddingLeft: 12, gap: 16,
-        fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", flexShrink: 0
-      }}>
-        <span>{elements.length} elements</span>
-        <span>·</span>
-        <span>{selectedEl ? `${selectedEl.name} selected` : "nothing selected"}</span>
-        <span>·</span>
-        <span>{bp} · {zoom}%</span>
-        <span style={{ marginLeft: "auto", paddingRight: 12 }}>drag from tray · click to select · delete key to remove</span>
-      </div>
-
-      {/* Main 3-col layout */}
+      {/* 3-column body */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
-        {/* Left: Element tray */}
-        <ElementTray leftTab={leftTab} setLeftTab={setLeftTab} elements={elements} />
+        {/* Left panel */}
+        <LeftPanel
+          tab={leftTab}
+          setTab={setLeftTab}
+          elements={elements}
+          subPages={subPages}
+          activeSubPageId={activeSubPageId}
+          onSwitch={switchSubPage}
+          onAdd={addSubPage}
+          onRename={renameSubPage}
+          onDeletePage={deleteSubPage}
+        />
 
-        {/* Center: Canvas */}
-        <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+        {/* Canvas */}
+        <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <Canvas
             elements={elements}
             setElements={setElements}
@@ -167,37 +234,63 @@ export default function Editor() {
             setSelected={setSelected}
             bp={bp}
             zoom={zoom}
+            canvasWidth={activeSubPage?.canvas_width || 1440}
+            canvasHeight={activeSubPage?.canvas_height || 2500}
             aiLines={aiLines}
             aiStreaming={aiStreaming}
           />
 
-          {/* Overlays */}
+          {/* Floating theme drawer */}
           {showTheme && (
-            <ThemeDrawer
-              currentTheme={theme}
-              currentMode={mode}
-              onThemeChange={setTheme}
-              onModeChange={setMode}
-              onClose={() => setShowTheme(false)}
-            />
+            <div style={{ position: "absolute", top: 8, right: 8, zIndex: 50 }}>
+              <ThemeDrawer
+                currentTheme={theme} currentMode={mode}
+                onThemeChange={handleThemeChange} onModeChange={handleModeChange}
+                onClose={() => setShowTheme(false)}
+              />
+            </div>
           )}
+          {/* AI dock */}
           {showAi && (
             <AiDock
               onGenerate={handleAiGenerate}
               onClose={() => setShowAi(false)}
               theme={theme}
-              pageType={page?.page_type}
+              pageType="custom"
             />
           )}
         </div>
 
-        {/* Right: Properties */}
-        <PropertiesPanel
+        {/* Inspector */}
+        <Inspector
           selectedEl={selectedEl}
           elements={elements}
           setElements={setElements}
           onDelete={handleDeleteElement}
+          activeSubPage={activeSubPage}
+          onUpdateSubPage={updateSubPage}
         />
+      </div>
+
+      {/* Bottom status bar */}
+      <div style={{
+        height: 26, background: "var(--bg-2)", borderTop: "1px solid var(--line)",
+        display: "flex", alignItems: "center", paddingLeft: 10, paddingRight: 10,
+        fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)",
+        gap: 8, flexShrink: 0
+      }}>
+        <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 5px var(--accent)" }} />
+        <span style={{ color: "var(--text-mute)" }}>{page?.title || "Untitled Project"}</span>
+        <span>→</span>
+        <span style={{ color: "var(--text-mute)" }}>{activeSubPage?.name || "Home"}</span>
+        <span>·</span>
+        <span>{elements.length} els</span>
+        <span>·</span>
+        <span>{bp}</span>
+        <div style={{ flex: 1 }} />
+        <span>{zoom}%</span>
+        <span>·</span>
+        <span>{selected ? "1 selected" : "0 selected"}</span>
       </div>
 
       {/* Publish modal */}
@@ -205,17 +298,12 @@ export default function Editor() {
         <PublishModal
           page={page}
           onClose={() => setShowPublish(false)}
-          onPublished={handlePublished}
+          onPublished={updated => setPage(p => ({ ...p, ...updated }))}
         />
       )}
 
-      {/* Keyboard shortcuts */}
-      <KeyHandler
-        selected={selected}
-        elements={elements}
-        setElements={setElements}
-        setSelected={setSelected}
-      />
+      {/* Keyboard handler */}
+      <KeyHandler selected={selected} elements={elements} setElements={setElements} setSelected={setSelected} />
     </div>
   );
 }
@@ -229,7 +317,6 @@ function KeyHandler({ selected, elements, setElements, setSelected }) {
         setSelected(null);
       }
       if (e.key === "Escape") setSelected(null);
-      // Arrow key nudge
       if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key) && selected) {
         const d = e.shiftKey ? 10 : 1;
         const dx = e.key === "ArrowRight" ? d : e.key === "ArrowLeft" ? -d : 0;

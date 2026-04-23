@@ -46,8 +46,9 @@
 [data-theme="neon"][data-mode="light"] { --accent:#e0006a; --accent-ink:#ffffff; --bg:#fff3fb; --bg-2:#ffe6f5; --surface:#ffffff; --surface-2:#fff7fc; --line:#ffb7de; --line-2:#ff79bc; --text:#2a0430; --text-mute:#85286c; --text-dim:#b665a0; }
 [data-theme="ghost"][data-mode="dark"] { --accent:#f2f2f2; --accent-ink:#0c0c0d; }
 [data-theme="ghost"][data-mode="light"]{ --accent:#0f0f10; --accent-ink:#ffffff; }
-[data-theme="brutal"][data-mode="dark"]{ --accent:#ffee00; --accent-ink:#000000; --bg:#000; --bg-2:#0a0a0a; --surface:#0f0f0f; --surface-2:#141414; --line:#2c2c2c; --line-2:#4a4a4a; --text:#fff; --text-mute:#bfbfbf; --text-dim:#777; }
-[data-theme="brutal"][data-mode="light"]{ --accent:#ff0000; --accent-ink:#ffffff; --bg:#fff; --bg-2:#f0f0f0; --surface:#fff; --surface-2:#fafafa; --line:#000; --line-2:#000; --text:#000; --text-mute:#222; --text-dim:#555; }
+/* ─── Brutal Theme override ─ lime accent ───────────────────────────────────── */
+[data-theme="brutal"][data-mode="dark"]{ --accent:#c6ff00; --accent-ink:#000000; --bg:#0a0a0a; --bg-2:#111111; --surface:#161616; --surface-2:#1c1c1c; --line:#252525; --line-2:#333333; --text:#ffffff; --text-mute:#c0c0c0; --text-dim:#666666; }
+[data-theme="brutal"][data-mode="light"]{ --accent:#6abd00; --accent-ink:#ffffff; --bg:#f5f5f5; --bg-2:#e8e8e8; --surface:#ffffff; --surface-2:#f0f0f0; --line:#d0d0d0; --line-2:#b0b0b0; --text:#0a0a0a; --text-mute:#444444; --text-dim:#888888; }
 [data-theme="paper"][data-mode="dark"] { --accent:#d4a574; --accent-ink:#000000; --bg:#1e1b15; --bg-2:#27231b; --surface:#2c2822; --surface-2:#322d25; --line:#3f392f; --line-2:#564e3f; --text:#e8e2d0; --text-mute:#b39b78; --text-dim:#7a6a51; }
 [data-theme="paper"][data-mode="light"]{ --accent:#a06b2a; --accent-ink:#ffffff; --bg:#f5f1e8; --bg-2:#ede5d3; --surface:#fbf7eb; --surface-2:#f1ecdb; --line:#d5ccb0; --line-2:#b8ac8a; --text:#2f2f2f; --text-mute:#7d6f55; --text-dim:#a89a7b; }
 [data-theme="sunset"][data-mode="dark"]{ --accent:#ff8e53; --accent-ink:#000000; --bg:#1c0f14; --bg-2:#2a1a1a; --surface:#331e1f; --surface-2:#3c2424; --line:#4d2c2a; --line-2:#6b3f3a; --text:#ffe8d6; --text-mute:#f5a98a; --text-dim:#a86960; }

@@ -81,28 +81,24 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
-class PageElement(BaseModel):
+class SubPage(BaseModel):
     id: str
-    type: str
-    x: float = 0
-    y: float = 0
-    w: float = 200
-    h: float = 100
-    content: Dict[str, Any] = {}
-    name: str = "Element"
-    zIndex: int = 0
-    locked: bool = False
-    visible: bool = True
-    animations: List[Dict[str, Any]] = []
+    name: str
+    slug: str
+    elements: List[Dict[str, Any]] = []
+    canvas_width: int = 1440
+    canvas_height: int = 2500
+    padding: int = 0
+    transition: str = "none"
 
 class PageCreate(BaseModel):
     title: str
     description: Optional[str] = ""
-    theme: str = "neon"
+    theme: str = "brutal"
     mode: str = "dark"
-    page_type: Optional[str] = "custom"
-    elements: List[PageElement] = []
-    breakpoint_default: str = "desktop"
+    sub_pages: List[SubPage] = []
+    canvas_width: int = 1440
+    canvas_height: int = 2500
 
 class PageUpdate(BaseModel):
     title: Optional[str] = None
@@ -110,14 +106,16 @@ class PageUpdate(BaseModel):
     theme: Optional[str] = None
     mode: Optional[str] = None
     elements: Optional[List[Any]] = None
-    breakpoint_default: Optional[str] = None
+    sub_pages: Optional[List[Any]] = None
+    canvas_width: Optional[int] = None
+    canvas_height: Optional[int] = None
     published: Optional[bool] = None
     slug: Optional[str] = None
 
 class AiRequest(BaseModel):
     prompt: str
     page_type: Optional[str] = "music"
-    theme: Optional[str] = "neon"
+    theme: Optional[str] = "brutal"
 
 class AiSummaryRequest(BaseModel):
     elements: List[Dict[str, Any]]
@@ -275,6 +273,10 @@ async def create_page(body: PageCreate, user: dict = Depends(get_current_user)):
         count += 1
         slug = f"{base_slug}-{count}"
     now = datetime.now(timezone.utc).isoformat()
+    # Default sub-page "Home" if none provided
+    sub_pages = [sp.model_dump() for sp in body.sub_pages] if body.sub_pages else [
+        {"id": f"sp-{uuid.uuid4().hex[:8]}", "name": "Home", "slug": "home", "elements": [], "canvas_width": body.canvas_width, "canvas_height": 2500, "padding": 0, "transition": "none"}
+    ]
     doc = {
         "_id": ObjectId(),
         "user_id": user["id"],
@@ -282,9 +284,10 @@ async def create_page(body: PageCreate, user: dict = Depends(get_current_user)):
         "description": body.description,
         "theme": body.theme,
         "mode": body.mode,
-        "page_type": body.page_type,
-        "elements": [e.model_dump() for e in body.elements],
-        "breakpoint_default": body.breakpoint_default,
+        "sub_pages": sub_pages,
+        "elements": [],  # kept for backward compat
+        "canvas_width": body.canvas_width,
+        "canvas_height": 2500,
         "published": False,
         "slug": slug,
         "created_at": now,
@@ -325,6 +328,9 @@ async def update_page(page_id: str, body: PageUpdate, user: dict = Depends(get_c
     if not existing:
         raise HTTPException(status_code=404, detail="Page not found")
     update = {k: v for k, v in body.model_dump().items() if v is not None}
+    # Allow explicit False for published
+    if body.published is not None:
+        update["published"] = body.published
     if "elements" in update and update["elements"] is None:
         del update["elements"]
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -456,5 +462,41 @@ async def animation_suggestions(body: dict, user: dict = Depends(get_current_use
 @router.get("/")
 async def root():
     return {"message": "Stakked API", "version": "1.0.0"}
+
+# ─── Assets (Pexels proxy) ─────────────────────────────────────────────────────
+@router.get("/assets/search")
+async def search_assets(q: str = "abstract art", per_page: int = 20, page: int = 1):
+    import httpx
+    api_key = os.environ.get("PEXELS_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Pexels API key not configured")
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                "https://api.pexels.com/v1/search",
+                headers={"Authorization": api_key},
+                params={"query": q, "per_page": per_page, "page": page, "orientation": "landscape"}
+            )
+            data = r.json()
+            return {
+                "photos": [
+                    {
+                        "id": p["id"],
+                        "alt": p.get("alt", ""),
+                        "photographer": p.get("photographer", ""),
+                        "src": {
+                            "small": p["src"]["small"],
+                            "medium": p["src"]["medium"],
+                            "large2x": p["src"]["large2x"],
+                        }
+                    }
+                    for p in data.get("photos", [])
+                ],
+                "total_results": data.get("total_results", 0),
+                "next_page": data.get("next_page"),
+            }
+    except Exception as e:
+        logger.error(f"Pexels error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 app.include_router(router)
