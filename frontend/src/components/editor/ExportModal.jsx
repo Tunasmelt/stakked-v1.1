@@ -5,10 +5,10 @@ import jsPDF from "jspdf";
 import JSZip from "jszip";
 
 async function captureArtboardPng(artboardEl) {
-  // Temporarily zoom to 100% by cloning styles? Simpler: capture at current scale but set pixelRatio.
   return await toPng(artboardEl, {
     pixelRatio: 2,
     cacheBust: true,
+    skipFonts: true,
     backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--surface") || "#000",
   });
 }
