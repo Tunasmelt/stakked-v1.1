@@ -44,12 +44,13 @@ export default function WorkflowCanvas({ initialNodes, initialEdges, onChange })
   const addNode = (type) => {
     const mt = meta(type);
     const n = {
-      id: `n-${Date.now()}`,
+      id: `n-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
       type, x: 200 - pan.x, y: 200 - pan.y,
       title: `${mt.label} ${nodes.length + 1}`,
       config: {},
     };
-    setNodes(prev => [...prev, n]);
+    // Dedupe — React StrictMode can invoke the updater twice in dev.
+    setNodes(prev => prev.some(x => x.id === n.id) ? prev : [...prev, n]);
     setSelected(n.id);
   };
 
