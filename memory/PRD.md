@@ -59,26 +59,33 @@ Music artists, digital artists, photographers, influencers, general creators.
 - Gallery (filter + community grid)
 - Published page view
 
-### 2026-04-23 — V2 Refactor (this session)
-- ✅ Removed "project types" gate — create page goes directly to editor
-- ✅ Split sidebar into `LeftPanel.jsx` (tray/layers/pages/assets) + `Inspector.jsx` (properties)
-- ✅ Theme made project-level and persistent via `PUT /api/pages/{id}`; theme drawer accessible in editor toolbar
-- ✅ Pexels integration: `/api/assets/search` proxy, LeftPanel "Assets" tab fetches & drag-drops photos
-- ✅ Sub-page management (add/rename/delete/switch) with independent element state
-- ✅ Custom canvas dimensions per sub-page (width/height editable from Inspector)
-- ✅ Fixed closure bug in `addSubPage` — new sub-page now auto-switches after creation
-- ✅ Fixed theme leak — editor restores previous `data-theme` on unmount
-- ✅ Testing: backend 19/19 pass, frontend 95% (all critical flows verified)
+### 2026-04-23 — V3 Canvas System (this session)
+Fully functional editor & canvas:
+- ✅ **Interactive resize handles** — 8 handles (nw/n/ne/w/e/sw/s/se), drag to resize, Shift = aspect-lock, snap to alignment targets
+- ✅ **Inline text editing** — double-click text element → contentEditable; Enter or blur commits
+- ✅ **Undo/redo** — 50-step history per sub-page, Cmd/Ctrl+Z & Cmd/Ctrl+Shift+Z (also Cmd+Y), toolbar buttons with disabled state
+- ✅ **Copy / Paste / Duplicate / Cut** — Cmd+C/V/D/X, in-memory clipboard, Inspector has Duplicate button
+- ✅ **Z-order** — Cmd+]/[ (forward/back), Cmd+Shift+]/[ (bring to front/send to back), 4 Inspector buttons
+- ✅ **Element-to-element snap guides** — snap to edges & centers of other elements + canvas edges/center, pink alignment line shown during drag/resize
+- ✅ **Lock enforcement** — locked elements hide resize handles, block drag
+- ✅ **Inspector cheatsheet** — shortcuts visible when no selection
+- ✅ **Status indicator** — 'saved'/'unsaved' in status bar (data-testid='status-saved')
+- ✅ **Testing**: backend 19/19, frontend 17/18 Playwright — arrow nudge confirmed via self-test (+1px, +10px with Shift)
+
+### 2026-04-23 — V2 Refactor
+- Removed "project types" gate; split sidebar into LeftPanel + Inspector; Pexels integration via /api/assets/search; sub-page management; fixed addSubPage closure bug; fixed theme leak on unmount.
+
+### 2026-04-23 — V1 MVP
 
 ## Prioritized Backlog
 
 ### P0
 - [ ] Workflow canvas (n8n-style node builder) — Option B
-- [ ] Full resize handles on canvas elements (drag corners/edges)
-- [ ] Double-click to edit text inline on canvas
+- [ ] Marquee selection (drag-rectangle to select multiple elements)
 
 ### P1
-- [ ] NLP layout sequencer (richer Gemini integration — plain-English → positioned elements with themes & animations)
+- [ ] Multi-select (Shift+click) and multi-element drag/move
+- [ ] NLP layout sequencer (richer Gemini chain — plain-English → positioned elements with themes & animations)
 - [ ] PDF / PNG / ZIP export
 - [ ] CSS animation picker per element
 - [ ] Custom slug per user profile
@@ -87,12 +94,11 @@ Music artists, digital artists, photographers, influencers, general creators.
 ### P2
 - [ ] Groq API integration (user-provided key)
 - [ ] Template library (fork community pages)
-- [ ] Grid/snap guide customization
-- [ ] Multi-select + undo/redo
+- [ ] Grid/snap guide customization (snap threshold, toggle snap)
 - [ ] Real-time collaboration
 - [ ] Custom domains
 - [ ] Analytics per published page
-- [ ] Split `server.py` into routers (auth/pages/ai/assets) — currently ~502 lines
+- [ ] Split `server.py` into routers (auth/pages/ai/assets)
 
 ## Known / Accepted Technical Debt
 - `server.py` is 502 lines (threshold 700) — modularize next P2 pass.
