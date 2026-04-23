@@ -90,20 +90,48 @@ const ZBtn = ({ onClick, icon: Icon, label, testid }) => (
 );
 
 export default function Inspector({
-  selectedEl, elements, setElements,
+  selectedEl, selectedCount, elements, setElements,
   onUpdate, onDelete, onDuplicate,
   onBringToFront, onSendToBack, onBringForward, onSendBackward,
   activeSubPage, onUpdateSubPage,
 }) {
-  // onUpdate(id, changes, {record}) — when not provided, fall back to direct setElements (no history).
+  // Multi-select view
+  if (!selectedEl && selectedCount > 1) {
+    return (
+      <aside data-testid="inspector-panel" style={{
+        width: 280, background: "var(--surface)", borderLeft: "1px solid var(--line)",
+        display: "flex", flexDirection: "column", overflow: "hidden", flexShrink: 0
+      }}>
+        <div style={{ height: 38, padding: "0 12px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text)" }}>MULTI · <span style={{ color: "var(--accent)" }}>{selectedCount}</span></span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", padding: "2px 6px", border: "1px solid var(--line)", borderRadius: 3 }}>Inspector</span>
+        </div>
+        <div style={{ padding: 14, display: "grid", gap: 8 }}>
+          <button data-testid="multi-duplicate-btn" onClick={() => onDuplicate && onDuplicate()} className="stk-input" style={{ height: 32, cursor: "pointer", color: "var(--text)" }}>Duplicate selection ({selectedCount})</button>
+          <button data-testid="multi-delete-btn" onClick={() => onDelete && onDelete()} className="stk-input" style={{ height: 32, cursor: "pointer", color: "var(--danger)", borderColor: "var(--danger)" }}>Delete selection</button>
+          <div style={{ borderTop: "1px dashed var(--line)", margin: "8px 0" }} />
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-mute)", letterSpacing: "0.1em" }}>Z-ORDER</div>
+          <div style={{ display: "flex", gap: 3 }}>
+            <ZBtn testid="z-send-back"    onClick={() => onSendToBack    && onSendToBack()}    icon={ArrowDownToLine} label="Send to back" />
+            <ZBtn testid="z-backward"     onClick={() => onSendBackward  && onSendBackward()}  icon={ArrowDown}       label="Send backward" />
+            <ZBtn testid="z-forward"      onClick={() => onBringForward  && onBringForward()}  icon={ArrowUp}         label="Bring forward" />
+            <ZBtn testid="z-bring-front"  onClick={() => onBringToFront  && onBringToFront()}  icon={ArrowUpToLine}   label="Bring to front" />
+          </div>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", marginTop: 8, lineHeight: 1.6 }}>
+            // Drag any selected element to move them all together.<br/>
+            // ⌘D dupes · Delete removes
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
   const update = (changes, { record = true } = {}) => {
     if (!selectedEl) return;
     if (onUpdate) onUpdate(selectedEl.id, changes, { record });
     else setElements(prev => prev.map(e => e.id === selectedEl.id ? { ...e, ...changes } : e));
   };
-  const updateContent = (key, value) => {
-    update({ content: { ...selectedEl?.content, [key]: value } });
-  };
+  const updateContent = (key, value) => { update({ content: { ...selectedEl?.content, [key]: value } }); };
 
   return (
     <aside data-testid="inspector-panel" style={{
@@ -273,6 +301,27 @@ export default function Inspector({
                 <Row label="Duration"><StkInput value={selectedEl.content?.duration || ""} onChange={v => updateContent("duration", v)} placeholder="03:30" /></Row>
               </Section>
             )}
+
+            {/* Animation */}
+            <Section title="ANIMATION">
+              <Row label="Preset">
+                <select
+                  data-testid="animation-select"
+                  className="stk-input"
+                  style={{ width: "100%", appearance: "none" }}
+                  value={selectedEl.animation || "none"}
+                  onChange={e => update({ animation: e.target.value })}
+                >
+                  {["none","fade-in","slide-up","slide-down","slide-left","slide-right","zoom-in","pulse","spin","bounce","glow","float"].map(a =>
+                    <option key={a} value={a}>{a}</option>
+                  )}
+                </select>
+              </Row>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-dim)", marginTop: 4, lineHeight: 1.6 }}>
+                // Animation plays on canvas preview and<br />
+                // carries over to published + exported pages.
+              </div>
+            </Section>
 
             {/* Visibility */}
             <Section title="VISIBILITY" defaultOpen={false}>

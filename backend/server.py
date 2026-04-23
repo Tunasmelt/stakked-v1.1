@@ -111,6 +111,7 @@ class PageUpdate(BaseModel):
     canvas_height: Optional[int] = None
     published: Optional[bool] = None
     slug: Optional[str] = None
+    workflow: Optional[Dict[str, Any]] = None
 
 class AiRequest(BaseModel):
     prompt: str
@@ -391,28 +392,53 @@ async def generate_layout(body: AiRequest, user: dict = Depends(get_current_user
             api_key=api_key,
             session_id=f"layout-{user['id']}-{uuid.uuid4()}",
             system_message="""You are a creative layout designer for Stakked, a drag-and-drop page builder for artists.
-            Generate page elements in JSON format. Each element has: id, type, x, y, w, h, content, name.
-            Types: text, image, button, shape, music, video, social, divider, gallery, icon
-            Return ONLY a valid JSON array of elements. No markdown, no explanation.
-            Canvas is 800px wide, unlimited height. Use pixel coordinates.
-            Place elements thoughtfully for the artist's purpose."""
+Return ONLY a valid JSON array of elements — no markdown, no explanation.
+
+Each element MUST have these fields:
+- id (unique string)
+- type: one of [text, image, button, shape, music, video, social, divider, gallery, icon, nav, testimonial, marquee, container]
+- x, y (pixel coordinates on a 1440×2500 artboard — use the full height, vary y from 0 up to ~2400)
+- w, h (pixel dimensions)
+- content: object appropriate for the type:
+    text: {kind: "heading"|"sub"|"body", text: string, size: int, align: "left"|"center"|"right"}
+    button: {label: string, href: string}
+    image: {url: string, fit: "cover"|"contain"|"fill"}
+    shape: {color: string, round: bool}
+    music: {title: string, duration: string}
+- name: short label
+- zIndex: integer (0..N)
+- animation: one of [none, fade-in, slide-up, slide-down, slide-left, slide-right, zoom-in, pulse, bounce, float, glow]
+
+Guidelines:
+- Start with a hero section at y≈0 (heading text, optional background shape).
+- Use grid/rows that flow downward. Don't overlap elements.
+- Pair every hero with at least one sub-heading and a call-to-action button.
+- Apply animations tastefully: fade-in/slide-up for text & images, pulse/glow for CTAs, float for decorative shapes.
+- For music artists, include a music element and a social element.
+- For photographers, include a gallery.
+- For influencers, include multiple buttons stacked (link-in-bio style).
+- Use vivid layouts, not a single column of text.
+- 8-14 elements total — balanced, not cluttered."""
         ).with_model("gemini", "gemini-2.5-flash")
 
-        msg = UserMessage(text=f"Create a {body.page_type} page layout for: {body.prompt}. Theme: {body.theme}. Return JSON array of elements.")
+        msg = UserMessage(text=f"Create a {body.page_type} page for: {body.prompt}. Theme: {body.theme}. Return the JSON array now.")
         response = await chat.send_message(msg)
 
-        # Parse response
         import json, re
         json_match = re.search(r'\[.*\]', response, re.DOTALL)
         if json_match:
             elements = json.loads(json_match.group())
-            # Ensure each element has required fields
             for i, el in enumerate(elements):
-                el.setdefault("id", f"el-{i}-{uuid.uuid4().hex[:6]}")
+                el.setdefault("id", f"el-ai-{i}-{uuid.uuid4().hex[:6]}")
                 el.setdefault("zIndex", i)
                 el.setdefault("locked", False)
                 el.setdefault("visible", True)
-                el.setdefault("animations", [])
+                el.setdefault("animation", "none")
+                # Sanity clamps
+                el["x"] = max(0, int(el.get("x", 0)))
+                el["y"] = max(0, int(el.get("y", 0)))
+                el["w"] = max(20, int(el.get("w", 200)))
+                el["h"] = max(20, int(el.get("h", 100)))
             return {"elements": elements, "prompt": body.prompt}
         return {"elements": [], "error": "Could not parse layout"}
     except Exception as e:
@@ -462,6 +488,97 @@ async def animation_suggestions(body: dict, user: dict = Depends(get_current_use
 @router.get("/")
 async def root():
     return {"message": "Stakked API", "version": "1.0.0"}
+
+# ─── Templates ─────────────────────────────────────────────────────────────────
+class TemplateCreate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    theme: str = "brutal"
+    mode: str = "dark"
+    elements: List[Dict[str, Any]] = []
+    canvas_width: int = 1440
+    canvas_height: int = 2500
+    category: Optional[str] = "general"
+
+@router.post("/templates")
+async def create_template(body: TemplateCreate, user: dict = Depends(get_current_user)):
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "_id": ObjectId(),
+        "user_id": user["id"],
+        "name": body.name,
+        "description": body.description,
+        "theme": body.theme,
+        "mode": body.mode,
+        "elements": body.elements,
+        "canvas_width": body.canvas_width,
+        "canvas_height": body.canvas_height,
+        "category": body.category,
+        "created_at": now,
+    }
+    await db.templates.insert_one(doc)
+    doc["id"] = str(doc.pop("_id"))
+    return doc
+
+@router.get("/templates")
+async def list_templates(user: dict = Depends(get_current_user)):
+    items = []
+    async for doc in db.templates.find({"user_id": user["id"]}).sort("created_at", -1):
+        doc["id"] = str(doc.pop("_id"))
+        items.append(doc)
+    return items
+
+@router.delete("/templates/{template_id}")
+async def delete_template(template_id: str, user: dict = Depends(get_current_user)):
+    try:
+        oid = ObjectId(template_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid template id")
+    res = await db.templates.delete_one({"_id": oid, "user_id": user["id"]})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"ok": True}
+
+@router.post("/templates/{template_id}/use")
+async def use_template(template_id: str, body: Dict[str, Any], user: dict = Depends(get_current_user)):
+    # Create a new page from a template
+    try:
+        oid = ObjectId(template_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid template id")
+    tpl = await db.templates.find_one({"_id": oid, "user_id": user["id"]})
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Template not found")
+    title = body.get("title") or tpl["name"]
+    now = datetime.now(timezone.utc).isoformat()
+    sub_id = f"sp-{uuid.uuid4().hex[:8]}"
+    sub_pages = [{
+        "id": sub_id, "name": "Home", "slug": "home",
+        "elements": tpl.get("elements", []),
+        "canvas_width": tpl.get("canvas_width", 1440),
+        "canvas_height": tpl.get("canvas_height", 2500),
+        "padding": 0, "transition": "none",
+    }]
+    page_doc = {
+        "_id": ObjectId(),
+        "user_id": user["id"],
+        "title": title,
+        "description": tpl.get("description", ""),
+        "theme": tpl.get("theme", "brutal"),
+        "mode": tpl.get("mode", "dark"),
+        "elements": tpl.get("elements", []),
+        "sub_pages": sub_pages,
+        "canvas_width": tpl.get("canvas_width", 1440),
+        "canvas_height": tpl.get("canvas_height", 2500),
+        "published": False,
+        "slug": slugify(title),
+        "workflow": {"nodes": [], "edges": []},
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.pages.insert_one(page_doc)
+    page_doc["id"] = str(page_doc.pop("_id"))
+    return page_doc
 
 # ─── Assets (Pexels proxy) ─────────────────────────────────────────────────────
 @router.get("/assets/search")

@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, RotateCcw, Undo2, Redo2, Monitor, Tablet, Smartphone, ZoomIn, ZoomOut, Globe, Sparkles, Eye, Download, ChevronDown } from "lucide-react";
 
-export default function Toolbar({ page, activeSubPage, theme, mode, bp, setBp, zoom, setZoom, canvasWidth, canvasHeight, onCanvasWidthChange, onCanvasHeightChange, onPublish, onThemeDrawer, onAiDock, onSave, saved, onWorkflow, workflowMode, onUndo, onRedo, canUndo, canRedo }) {
+export default function Toolbar({ page, activeSubPage, theme, mode, bp, setBp, zoom, setZoom, canvasWidth, canvasHeight, onCanvasWidthChange, onCanvasHeightChange, onPublish, onThemeDrawer, onAiDock, onSave, saved, onWorkflow, workflowMode, onUndo, onRedo, canUndo, canRedo, onExport }) {
   return (
     <div style={{
       height: 42, display: "flex", alignItems: "center", gap: 0,
@@ -163,8 +163,8 @@ export default function Toolbar({ page, activeSubPage, theme, mode, bp, setBp, z
       </button>
 
       {/* Export */}
-      <button style={{ padding: "0 10px", height: 28, margin: "0 2px", border: "1px solid var(--line)", borderRadius: "var(--r-sm)", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-mute)", display: "flex", alignItems: "center", gap: 5, transition: "all 0.15s" }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--text-mute)"; e.currentTarget.style.color = "var(--text)"; }}
+      <button data-testid="export-btn" onClick={onExport} style={{ padding: "0 10px", height: 28, margin: "0 2px", border: "1px solid var(--line)", borderRadius: "var(--r-sm)", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-mute)", display: "flex", alignItems: "center", gap: 5, transition: "all 0.15s" }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--line)"; e.currentTarget.style.color = "var(--text-mute)"; }}>
         <Download size={11} /> Export
       </button>
